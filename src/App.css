@@ -884,6 +884,12 @@
   grid-column: 1 / -1;
 }
 
+.recommended-error {
+  margin: 0.5rem 0 0;
+  color: var(--danger, #8b2e2e);
+  font-size: 0.92rem;
+}
+
 @media (min-width: 640px) {
   .recommended-row {
     grid-template-columns: 1fr auto;

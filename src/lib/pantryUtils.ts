@@ -28,17 +28,44 @@ export function formatExpiryLabel(expiresAt: string): string {
 }
 
 export function normalizeName(name: string): string {
-  return name.trim().toLowerCase().replace(/s\b/g, '').replace(/[^a-z0-9]+/g, ' ');
+  return name.trim().toLowerCase().replace(/s\b/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+/** Words that change the ingredient (garlic powder is not garlic). */
+const FORM_WORDS = new Set(['powder', 'flake', 'extract', 'paste', 'granule']);
+
+function tokens(normalized: string): string[] {
+  return normalized.split(' ').filter(Boolean);
+}
+
+function formWordsOf(normalized: string): Set<string> {
+  return new Set(tokens(normalized).filter((t) => FORM_WORDS.has(t)));
+}
+
+function sameFormWords(a: string, b: string): boolean {
+  const left = formWordsOf(a);
+  const right = formWordsOf(b);
+  if (left.size !== right.size) return false;
+  for (const word of left) {
+    if (!right.has(word)) return false;
+  }
+  return true;
+}
+
+/** True when pantry item name and recipe ingredient refer to the same thing. */
+export function ingredientNamesMatch(pantryName: string, ingredient: string): boolean {
+  const hay = normalizeName(pantryName);
+  const needle = normalizeName(ingredient);
+  if (!hay || !needle) return false;
+  if (hay === needle) return true;
+  if (!sameFormWords(hay, needle)) return false;
+  return hay.includes(needle) || needle.includes(hay);
 }
 
 /** Fuzzy-ish pantry match: recipe ingredient vs pantry item names. */
 export function pantryHasIngredient(pantry: PantryItem[], ingredient: string): boolean {
   const usable = pantry.filter((p) => getExpirationStatus(p.expiresAt) !== 'expired');
-  const needle = normalizeName(ingredient);
-  return usable.some((p) => {
-    const hay = normalizeName(p.name);
-    return hay.includes(needle) || needle.includes(hay);
-  });
+  return usable.some((p) => ingredientNamesMatch(p.name, ingredient));
 }
 
 export function matchRecipeToPantry(recipe: Recipe, pantry: PantryItem[]) {

@@ -22,11 +22,12 @@ export function recommendFromStock(
 
   for (const recipe of recipes) {
     const match = matchRecipeToPantry(recipe, pantry);
-    if (match.coverage < 0.45 || match.missing.length === 0 || match.missing.length > 4) {
+    // At least two pantry hits, and not a whole grocery run (max 5 extras).
+    if (match.have.length < 2 || match.missing.length === 0 || match.missing.length > 5) {
       continue;
     }
     // Prefer recipes that need few extras
-    const weight = match.coverage * (5 - match.missing.length);
+    const weight = match.coverage * (6 - match.missing.length);
     for (const missing of match.missing) {
       const key = normalizeName(missing);
       if (!key || dismissed.has(key)) continue;

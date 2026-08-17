@@ -36,13 +36,14 @@ interface PantryTabProps {
   onReset: () => void;
   onAddMedia: (items: Omit<PantryMedia, 'id' | 'createdAt'>[]) => void;
   onRemoveMedia: (id: string) => void;
-  onAddRecommended: (name: string, note: string) => void;
+  onAddRecommended: (name: string, note: string) => RecommendedIngredient | null;
   onUpdateRecommended: (
     item: RecommendedIngredient,
     patch: { name?: string; note?: string },
   ) => void;
   onRemoveRecommended: (item: RecommendedIngredient) => void;
   onRestoreRecommended: () => void;
+  onAddRecommendedToPantry: (item: RecommendedIngredient) => void;
 }
 
 export function PantryTab({
@@ -60,6 +61,7 @@ export function PantryTab({
   onUpdateRecommended,
   onRemoveRecommended,
   onRestoreRecommended,
+  onAddRecommendedToPantry,
 }: PantryTabProps) {
   const [query, setQuery] = useState('');
   const [name, setName] = useState('');
@@ -268,6 +270,7 @@ export function PantryTab({
         onUpdate={onUpdateRecommended}
         onRemove={onRemoveRecommended}
         onRestoreAutos={onRestoreRecommended}
+        onAddToPantry={onAddRecommendedToPantry}
       />
 
       <div className="pantry-toolbar pantry-toolbar--simple">
