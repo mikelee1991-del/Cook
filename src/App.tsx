@@ -1,18 +1,18 @@
 import { useState } from 'react';
-import { BarTab } from './components/BarTab';
 import { CookTab } from './components/CookTab';
 import { PantryTab } from './components/PantryTab';
 import { SavesTab } from './components/SavesTab';
-import { useBarCabinet } from './hooks/useBarCabinet';
 import { usePantry } from './hooks/usePantry';
+import { usePantryMedia } from './hooks/usePantryMedia';
 import { useSavedRecipes } from './hooks/useSavedRecipes';
 import './App.css';
 
-type Tab = 'pantry' | 'cook' | 'saves' | 'bar';
+type Tab = 'pantry' | 'cook' | 'saves';
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('pantry');
   const { items, addItem, removeItem, resetPantry } = usePantry();
+  const { media, error: mediaError, addMedia, removeMedia } = usePantryMedia();
   const {
     recipes: savedRecipes,
     error: savesError,
@@ -21,16 +21,6 @@ export default function App() {
     removeRecipe,
     addImagesToRecipe,
   } = useSavedRecipes();
-  const {
-    media: barMedia,
-    bottles,
-    error: barError,
-    addMedia,
-    removeMedia,
-    addBottle,
-    removeBottle,
-    clearAll: clearBar,
-  } = useBarCabinet();
 
   return (
     <div className="app">
@@ -42,7 +32,7 @@ export default function App() {
           <p className="brand">Dinner</p>
           <h1 className="hero__headline">Figure out dinner from what you already have.</h1>
           <p className="hero__lede">
-            Pantry, recipes, saves, and your bar cabinet — only what you actually have.
+            Scan your pantry shelves, filter what to cook, and save recipe photos or links.
           </p>
           <div className="hero__cta" role="group" aria-label="Choose a tab">
             <button
@@ -58,13 +48,6 @@ export default function App() {
               onClick={() => setTab('cook')}
             >
               Decide dinner
-            </button>
-            <button
-              type="button"
-              className={tab === 'bar' ? 'btn btn--primary' : 'btn btn--on-media'}
-              onClick={() => setTab('bar')}
-            >
-              Bar cabinet
             </button>
             <button
               type="button"
@@ -96,14 +79,6 @@ export default function App() {
         </button>
         <button
           type="button"
-          className={tab === 'bar' ? 'tabs__btn is-active' : 'tabs__btn'}
-          onClick={() => setTab('bar')}
-          aria-current={tab === 'bar' ? 'page' : undefined}
-        >
-          Bar
-        </button>
-        <button
-          type="button"
           className={tab === 'saves' ? 'tabs__btn is-active' : 'tabs__btn'}
           onClick={() => setTab('saves')}
           aria-current={tab === 'saves' ? 'page' : undefined}
@@ -116,24 +91,16 @@ export default function App() {
         {tab === 'pantry' && (
           <PantryTab
             items={items}
+            media={media}
+            mediaError={mediaError}
             onAdd={addItem}
             onRemove={removeItem}
             onReset={resetPantry}
+            onAddMedia={addMedia}
+            onRemoveMedia={removeMedia}
           />
         )}
         {tab === 'cook' && <CookTab pantry={items} />}
-        {tab === 'bar' && (
-          <BarTab
-            media={barMedia}
-            bottles={bottles}
-            storageError={barError}
-            onAddMedia={addMedia}
-            onRemoveMedia={removeMedia}
-            onAddBottle={addBottle}
-            onRemoveBottle={removeBottle}
-            onClearAll={clearBar}
-          />
-        )}
         {tab === 'saves' && (
           <SavesTab
             recipes={savedRecipes}
@@ -148,8 +115,8 @@ export default function App() {
 
       <footer className="footer">
         <p>
-          Data stays in this browser. Spices are the only autopopulated pantry items; bar bottles
-          are only added from your media or manual entry.
+          Data stays in this browser. Only basic spices are autopopulated; shelf items come from
+          your photos or manual entry.
         </p>
       </footer>
     </div>

@@ -1,10 +1,9 @@
 # Dinner
 
-Interactive dinner planner with four tabs:
+Interactive dinner planner with three tabs:
 
-- **Pantry** — search, add, and remove groceries; only basic spices are preloaded (no guessed purchase history)
+- **Pantry** — upload shelf photos/videos for identification, search/add/remove groceries; only basic spices are preloaded (nothing guessed)
 - **Cook** — recipe suggestions filterable by ingredient match, time, ease, apparatus, and flavor
-- **Bar** — upload bar-cabinet photos/videos; bottle list is filled from label analysis or manual entry (never guessed)
 - **Saves** — upload recipe photos or save favorite recipe links
 
 ## Develop
@@ -14,11 +13,11 @@ npm install
 npm run dev
 ```
 
-## Bar cabinet analysis
+## Pantry shelf scan
 
-1. Upload photos/videos in the **Bar** tab (and/or drop files into `data/bar-cabinet/`).
+1. Upload photos/videos in the Pantry tab **Scan shelves** section (and/or drop files into `data/pantry-shelves/`).
 2. Attach the same media in your Cursor agent chat so labels can be read.
-3. Only bottles that are clearly visible are added; confirm or remove anything marked unclear.
+3. Only clearly visible items are added — confirm or remove anything wrong.
 
 ## Build
 
@@ -27,4 +26,4 @@ npm run build
 npm run preview
 ```
 
-Local state keys: `dinner-pantry-v1`, `dinner-saves-v1`, `dinner-bar-media-v1`, `dinner-bar-bottles-v1`.
+Local state keys: `dinner-pantry-v1`, `dinner-pantry-media-v1`, `dinner-saves-v1`.

@@ -1,11 +1,14 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { groceryCatalog } from '../data/pantrySeed';
-import type { PantryItem, PantrySection, Store } from '../types';
+import type { PantryItem, PantryMedia, PantrySection, Store } from '../types';
+import { compressImageFiles } from '../lib/imageCompress';
 import {
   formatExpiryLabel,
   getExpirationStatus,
   todayISO,
 } from '../lib/pantryUtils';
+
+const MAX_VIDEO_BYTES = 12 * 1024 * 1024;
 
 const SECTIONS: { id: PantrySection; label: string }[] = [
   { id: 'fresh', label: 'Fresh produce' },
@@ -16,6 +19,8 @@ const SECTIONS: { id: PantrySection; label: string }[] = [
 
 interface PantryTabProps {
   items: PantryItem[];
+  media: PantryMedia[];
+  mediaError: string | null;
   onAdd: (input: {
     name: string;
     store: Store;
@@ -25,9 +30,20 @@ interface PantryTabProps {
   }) => void;
   onRemove: (id: string) => void;
   onReset: () => void;
+  onAddMedia: (items: Omit<PantryMedia, 'id' | 'createdAt'>[]) => void;
+  onRemoveMedia: (id: string) => void;
 }
 
-export function PantryTab({ items, onAdd, onRemove, onReset }: PantryTabProps) {
+export function PantryTab({
+  items,
+  media,
+  mediaError,
+  onAdd,
+  onRemove,
+  onReset,
+  onAddMedia,
+  onRemoveMedia,
+}: PantryTabProps) {
   const [query, setQuery] = useState('');
   const [name, setName] = useState('');
   const [section, setSection] = useState<PantrySection>('fresh');
@@ -38,6 +54,10 @@ export function PantryTab({ items, onAdd, onRemove, onReset }: PantryTabProps) {
     return d.toISOString().slice(0, 10);
   });
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [lightbox, setLightbox] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const suggestions = useMemo(() => {
     const q = name.trim().toLowerCase();
@@ -91,13 +111,62 @@ export function PantryTab({ items, onAdd, onRemove, onReset }: PantryTabProps) {
     setShowSuggestions(false);
   }
 
+  async function handleFiles(files: FileList | null) {
+    if (!files?.length) return;
+    setBusy(true);
+    setUploadError(null);
+    try {
+      const images: File[] = [];
+      const videos: File[] = [];
+      Array.from(files).forEach((f) => {
+        if (f.type.startsWith('image/')) images.push(f);
+        else if (f.type.startsWith('video/')) videos.push(f);
+      });
+
+      const added: Omit<PantryMedia, 'id' | 'createdAt'>[] = [];
+
+      if (images.length) {
+        const compressed = await compressImageFiles(images);
+        compressed.forEach((src, i) => {
+          added.push({
+            kind: 'image',
+            src,
+            name: images[i]?.name || `pantry-${i + 1}.jpg`,
+          });
+        });
+      }
+
+      for (const video of videos) {
+        if (video.size > MAX_VIDEO_BYTES) {
+          setUploadError(
+            `"${video.name}" is over 12MB. Trim it or upload still photos of each shelf instead.`,
+          );
+          continue;
+        }
+        const src = await readFileAsDataUrl(video);
+        added.push({ kind: 'video', src, name: video.name });
+      }
+
+      if (!added.length && !uploadError) {
+        setUploadError('Choose photos or videos of your pantry shelves.');
+        return;
+      }
+      if (added.length) onAddMedia(added);
+    } catch {
+      setUploadError('Could not read one or more files. Try JPG/PNG or a shorter MP4.');
+    } finally {
+      setBusy(false);
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  }
+
   return (
     <div className="tab-panel pantry-panel">
       <header className="panel-intro">
         <h2>Your pantry</h2>
         <p>
-          Search, add, or remove groceries. Only basic spices are preloaded — purchase history is
-          never guessed. Store of origin is only used when importing real orders.
+          Upload photos or videos of your shelves so items can be identified from labels — nothing
+          is guessed. You can also add items manually. Only basic spices are preloaded.
         </p>
       </header>
 
@@ -118,6 +187,60 @@ export function PantryTab({ items, onAdd, onRemove, onReset }: PantryTabProps) {
           )}
         </aside>
       )}
+
+      {(mediaError || uploadError) && (
+        <aside className="expiry-banner" role="alert">
+          <p className="expiry-banner__expired">{mediaError || uploadError}</p>
+        </aside>
+      )}
+
+      <section className="add-form">
+        <h3>Scan shelves</h3>
+        <p className="add-form__hint">
+          Photograph each shelf straight-on with labels readable. Attach the same files in your
+          Cursor chat so they can be identified, then confirm items here.
+        </p>
+        <div className="upload-drop upload-drop--tall">
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*,video/*"
+            multiple
+            onChange={(e) => handleFiles(e.target.files)}
+          />
+          <p>{busy ? 'Processing…' : 'Choose pantry photos and/or videos'}</p>
+        </div>
+
+        {media.length > 0 && (
+          <ul className="bar-media-grid">
+            {media.map((item) => (
+              <li key={item.id} className="bar-media-card">
+                {item.kind === 'image' ? (
+                  <button
+                    type="button"
+                    className="bar-media-card__preview"
+                    onClick={() => setLightbox(item.src)}
+                  >
+                    <img src={item.src} alt={item.name} />
+                  </button>
+                ) : (
+                  <video className="bar-media-card__preview" src={item.src} controls playsInline />
+                )}
+                <div className="bar-media-card__meta">
+                  <span>{item.kind === 'image' ? 'Photo' : 'Video'}</span>
+                  <button
+                    type="button"
+                    className="btn btn--ghost"
+                    onClick={() => onRemoveMedia(item.id)}
+                  >
+                    Remove
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       <div className="pantry-toolbar pantry-toolbar--simple">
         <label className="field field--grow">
@@ -225,6 +348,25 @@ export function PantryTab({ items, onAdd, onRemove, onReset }: PantryTabProps) {
           <p className="empty-state">No items match your search. Clear the filter to see everything.</p>
         )}
       </div>
+
+      {lightbox && (
+        <div
+          className="lightbox"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setLightbox(null)}
+        >
+          <button
+            type="button"
+            className="lightbox__close"
+            onClick={() => setLightbox(null)}
+            aria-label="Close"
+          >
+            ×
+          </button>
+          <img src={lightbox} alt="Pantry shelf" onClick={(e) => e.stopPropagation()} />
+        </div>
+      )}
     </div>
   );
 }
@@ -247,6 +389,7 @@ function PantryRow({
             {item.quantity}
             {item.isStaple && <span className="tag tag--staple">Spice</span>}
             {item.fromPurchaseHistory && <span className="tag">Imported</span>}
+            {item.fromMediaScan && <span className="tag">From photo</span>}
           </span>
         </div>
         <div className={`item-row__expiry item-row__expiry--${status}`}>
@@ -267,4 +410,13 @@ function PantryRow({
       </button>
     </li>
   );
+}
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
 }
