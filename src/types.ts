@@ -92,3 +92,28 @@ export interface SavedRecipe {
   images: string[];
   createdAt: string;
 }
+
+export type BarMediaKind = 'image' | 'video';
+
+export interface BarMedia {
+  id: string;
+  kind: BarMediaKind;
+  /** Compressed data URL for images; object URL or data URL for short videos */
+  src: string;
+  name: string;
+  createdAt: string;
+}
+
+export type BottleConfidence = 'clear' | 'likely' | 'unclear';
+
+export interface BarBottle {
+  id: string;
+  name: string;
+  /** e.g. whiskey, gin, amaro — optional */
+  category: string;
+  notes: string;
+  /** How identification was made */
+  source: 'vision' | 'manual';
+  confidence: BottleConfidence;
+  createdAt: string;
+}
