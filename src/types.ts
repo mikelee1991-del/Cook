@@ -112,4 +112,5 @@ export interface RecommendedIngredient {
   reason: string;
   source: 'auto' | 'manual';
   createdAt: string;
+  inPantry?: boolean;
 }

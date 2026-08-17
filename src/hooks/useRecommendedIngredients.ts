@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { recommendFromStock } from '../lib/recommendIngredients';
-import { normalizeName, uid } from '../lib/pantryUtils';
+import { normalizeName, pantryHasIngredient, uid } from '../lib/pantryUtils';
 import type { PantryItem, RecommendedIngredient } from '../types';
 
 const MANUAL_KEY = 'dinner-recommended-manual-v1';
@@ -14,6 +14,11 @@ function loadJson<T>(key: string, fallback: T): T {
   } catch {
     return fallback;
   }
+}
+
+function hasName(items: RecommendedIngredient[], name: string, exceptId?: string): boolean {
+  const key = normalizeName(name);
+  return items.some((p) => p.id !== exceptId && normalizeName(p.name) === key);
 }
 
 export function useRecommendedIngredients(pantry: PantryItem[]) {
@@ -46,25 +51,33 @@ export function useRecommendedIngredients(pantry: PantryItem[]) {
       );
   }, [pantry, dismissed, manual]);
 
-  const items = useMemo(() => [...manual, ...auto], [manual, auto]);
+  const items = useMemo(
+    () =>
+      [...manual, ...auto].map((item) => ({
+        ...item,
+        inPantry: pantryHasIngredient(pantry, item.name),
+      })),
+    [manual, auto, pantry],
+  );
 
   const addManual = useCallback((name: string, note = '') => {
     const trimmed = name.trim();
     if (!trimmed) return null;
-    const item: RecommendedIngredient = {
-      id: uid('rec'),
-      name: trimmed,
-      note: note.trim(),
-      reason: '',
-      source: 'manual',
-      createdAt: new Date().toISOString(),
-    };
+    let added: RecommendedIngredient | null = null;
     setManual((prev) => {
-      if (prev.some((p) => normalizeName(p.name) === normalizeName(trimmed))) return prev;
-      return [item, ...prev];
+      if (hasName(prev, trimmed)) return prev;
+      added = {
+        id: uid('rec'),
+        name: trimmed,
+        note: note.trim(),
+        reason: '',
+        source: 'manual',
+        createdAt: new Date().toISOString(),
+      };
+      return [added, ...prev];
     });
     setDismissed((prev) => prev.filter((n) => n !== normalizeName(trimmed)));
-    return item;
+    return added;
   }, []);
 
   const updateItem = useCallback(
@@ -73,11 +86,12 @@ export function useRecommendedIngredients(pantry: PantryItem[]) {
       const nextNote = patch.note ?? item.note;
 
       if (item.source === 'manual') {
-        setManual((prev) =>
-          prev.map((p) =>
+        setManual((prev) => {
+          if (hasName(prev, nextName, item.id)) return prev;
+          return prev.map((p) =>
             p.id === item.id ? { ...p, name: nextName, note: nextNote } : p,
-          ),
-        );
+          );
+        });
         return;
       }
 
@@ -94,7 +108,10 @@ export function useRecommendedIngredients(pantry: PantryItem[]) {
         const key = normalizeName(item.name);
         return prev.includes(key) ? prev : [...prev, key];
       });
-      setManual((prev) => [promoted, ...prev]);
+      setManual((prev) => {
+        if (hasName(prev, nextName)) return prev;
+        return [promoted, ...prev];
+      });
     },
     [],
   );

@@ -4,10 +4,11 @@ import type { RecommendedIngredient } from '../types';
 interface RecommendedIngredientsProps {
   items: RecommendedIngredient[];
   dismissedCount: number;
-  onAdd: (name: string, note: string) => void;
+  onAdd: (name: string, note: string) => RecommendedIngredient | null;
   onUpdate: (item: RecommendedIngredient, patch: { name?: string; note?: string }) => void;
   onRemove: (item: RecommendedIngredient) => void;
   onRestoreAutos: () => void;
+  onAddToPantry: (item: RecommendedIngredient) => void;
 }
 
 export function RecommendedIngredients({
@@ -17,9 +18,11 @@ export function RecommendedIngredients({
   onUpdate,
   onRemove,
   onRestoreAutos,
+  onAddToPantry,
 }: RecommendedIngredientsProps) {
   const [name, setName] = useState('');
   const [note, setNote] = useState('');
+  const [formError, setFormError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftName, setDraftName] = useState('');
   const [draftNote, setDraftNote] = useState('');
@@ -27,9 +30,14 @@ export function RecommendedIngredients({
   function handleAdd(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
-    onAdd(name, note);
+    const added = onAdd(name, note);
+    if (!added) {
+      setFormError('That ingredient is already on the list.');
+      return;
+    }
     setName('');
     setNote('');
+    setFormError(null);
   }
 
   function startEdit(item: RecommendedIngredient) {
@@ -48,7 +56,7 @@ export function RecommendedIngredients({
       <h3>Recommended ingredients</h3>
       <p className="add-form__hint">
         Based on what you already have — extras that unlock near-ready recipes. Add your own or
-        edit any row.
+        edit any row. Use “Add to pantry” when you have it in stock.
       </p>
 
       <form className="add-form__grid saves-form-grid" onSubmit={handleAdd}>
@@ -56,7 +64,10 @@ export function RecommendedIngredients({
           <span className="field__label">Add ingredient</span>
           <input
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => {
+              setName(e.target.value);
+              setFormError(null);
+            }}
             placeholder="e.g. Lemons"
             required
           />
@@ -73,6 +84,11 @@ export function RecommendedIngredients({
           Add to list
         </button>
       </form>
+      {formError && (
+        <p className="recommended-error" role="status">
+          {formError}
+        </p>
+      )}
 
       {items.length === 0 ? (
         <p className="empty-state">
@@ -126,12 +142,22 @@ export function RecommendedIngredients({
                         <span className="tag">
                           {item.source === 'auto' ? 'Suggested' : 'Manual'}
                         </span>
+                        {item.inPantry && <span className="tag">In pantry</span>}
                         {item.reason && <span>{item.reason}</span>}
                         {item.note && <span>{item.note}</span>}
                       </span>
                     </div>
                   </div>
                   <div className="clip-card__actions">
+                    {!item.inPantry && (
+                      <button
+                        type="button"
+                        className="btn btn--ghost"
+                        onClick={() => onAddToPantry(item)}
+                      >
+                        Add to pantry
+                      </button>
+                    )}
                     <button
                       type="button"
                       className="btn btn--ghost"

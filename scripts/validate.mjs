@@ -22,6 +22,7 @@ function read(rel) {
 }
 
 run('lint', 'npm', ['run', 'lint']);
+run('recommend tests', 'npm', ['run', 'test:recommend']);
 run('build', 'npm', ['run', 'build']);
 
 console.log('\n→ smoke dist');
@@ -47,13 +48,15 @@ assert.match(pantry, /RecommendedIngredients/, 'recommended list wired in pantry
 
 const rec = read('src/lib/recommendIngredients.ts');
 assert.match(rec, /recommendFromStock/, 'recommendation engine present');
+assert.match(read('src/lib/pantryUtils.ts'), /ingredientNamesMatch/, 'form-aware pantry match');
+assert.match(read('src/components/RecommendedIngredients.tsx'), /Add to pantry/, 'add-to-pantry on list');
 
 const saves = read('src/components/SavesTab.tsx');
 assert.match(saves, /Scan pages in bulk|Scan & sort/, 'saves scan path present');
 assert.match(saves, /BulkUploadZone/, 'bulk upload wired in saves');
 
 const pkg = JSON.parse(read('package.json'));
-for (const script of ['dev', 'build', 'lint', 'preview', 'validate']) {
+for (const script of ['dev', 'build', 'lint', 'preview', 'validate', 'test:recommend']) {
   assert.ok(pkg.scripts?.[script], `package.json missing script: ${script}`);
 }
 

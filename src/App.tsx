@@ -7,6 +7,8 @@ import { usePantryMedia } from './hooks/usePantryMedia';
 import { usePhotoScans } from './hooks/usePhotoScans';
 import { useRecommendedIngredients } from './hooks/useRecommendedIngredients';
 import { useSavedRecipes } from './hooks/useSavedRecipes';
+import { pantryDraftFromName } from './lib/pantryDraft';
+import type { RecommendedIngredient } from './types';
 import './App.css';
 
 type Tab = 'pantry' | 'cook' | 'saves';
@@ -39,6 +41,11 @@ export default function App() {
     removeClip,
     setClipKind,
   } = usePhotoScans();
+
+  function addRecommendedToPantry(item: RecommendedIngredient) {
+    addItem(pantryDraftFromName(item.name));
+    removeRecommended(item);
+  }
 
   return (
     <div className="app">
@@ -122,6 +129,7 @@ export default function App() {
             onUpdateRecommended={updateRecommended}
             onRemoveRecommended={removeRecommended}
             onRestoreRecommended={restoreRecommended}
+            onAddRecommendedToPantry={addRecommendedToPantry}
           />
         )}
         {tab === 'cook' && <CookTab pantry={items} />}
