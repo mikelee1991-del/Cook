@@ -865,10 +865,29 @@
   margin-top: 1rem;
 }
 
-.scan-results {
-  margin-top: 1.75rem;
-  padding-top: 1.25rem;
-  border-top: 1px solid var(--line);
+.recommended-section {
+  margin-top: 1.5rem;
+}
+
+.recommended-list {
+  margin-top: 1rem;
+}
+
+.recommended-row {
+  align-items: start;
+}
+
+.recommended-edit {
+  display: grid;
+  gap: 0.65rem;
+  width: 100%;
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 640px) {
+  .recommended-row {
+    grid-template-columns: 1fr auto;
+  }
 }
 
 .scan-results__heading {
