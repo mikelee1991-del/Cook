@@ -101,8 +101,9 @@ export function PantryTab({ items, onAdd, onRemove, onReset }: PantryTabProps) {
       <header className="panel-intro">
         <h2>Your pantry</h2>
         <p>
-          Search, add, or remove groceries. Items labeled from Ralph&apos;s, Vons, and Whole
-          Foods are seeded from purchase-history style imports — swap in a real export anytime.
+          Search, add, or remove groceries. Only basic spices are preloaded — nothing from store
+          purchase history is guessed. Add items yourself, or connect a real order export when
+          available.
         </p>
       </header>
 
@@ -148,7 +149,7 @@ export function PantryTab({ items, onAdd, onRemove, onReset }: PantryTabProps) {
           </select>
         </label>
         <button type="button" className="btn btn--ghost" onClick={onReset}>
-          Reset seed data
+          Reset to basic spices
         </button>
       </div>
 

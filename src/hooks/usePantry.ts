@@ -3,14 +3,14 @@ import { createInitialPantry } from '../data/pantrySeed';
 import type { CatalogItem, PantryItem, Store, PantrySection } from '../types';
 import { todayISO, uid } from '../lib/pantryUtils';
 
-const STORAGE_KEY = 'supper-pantry-v1';
+const STORAGE_KEY = 'supper-pantry-v2';
 
 function loadPantry(): PantryItem[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return createInitialPantry();
     const parsed = JSON.parse(raw) as PantryItem[];
-    if (!Array.isArray(parsed) || parsed.length === 0) return createInitialPantry();
+    if (!Array.isArray(parsed)) return createInitialPantry();
     return parsed;
   } catch {
     return createInitialPantry();

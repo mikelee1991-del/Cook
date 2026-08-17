@@ -109,8 +109,8 @@ export default function App() {
 
       <footer className="footer">
         <p>
-          Pantry and saves persist in this browser. Purchase-history and NYT saved recipes are
-          starter seeds until live exports are connected.
+          Pantry and saves persist in this browser. Only basic spices are auto-loaded — store
+          purchase history is never invented.
         </p>
       </footer>
     </div>
