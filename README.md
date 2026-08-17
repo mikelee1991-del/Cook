@@ -1,30 +1,22 @@
 # Dinner
 
-Interactive dinner planner with three tabs:
+Interactive dinner planner (Vite + React).
 
-- **Pantry** — upload shelf photos/videos for identification, search/add/remove groceries; only basic spices are preloaded
-- **Cook** — recipe suggestions filterable by ingredient match, time, ease, apparatus, and flavor
-- **Saves** — scan page photos (auto-sorts multiple recipes vs other text), or save favorite links
-
-## Develop
+## Commands
 
 ```bash
-npm install
-npm run dev
+npm ci          # install
+npm run dev     # local app at http://localhost:5173
+npm run validate  # lint + build + smoke checks
+npm run preview   # serve production build
 ```
 
-## Photo page scanning
+## Tabs
 
-On **Saves → Scan photos**, upload any page image. OCR runs in the browser and sorts text into:
+- **Pantry** — shelf photo/video upload, spices-only seed, manual add/remove
+- **Cook** — filter recipes by ingredients, time, ease, apparatus, flavor
+- **Saves** — bulk scan page photos (auto-sort recipes vs other text) or save links
 
-- **Recipe** clips (ingredients / directions patterns; multiple recipes on one page are split)
-- **Other text** (notes, ads, misc)
+## Cloud Agent
 
-Reclassify, discard, or **Keep as saved recipe** for each clip.
-
-## Build
-
-```bash
-npm run build
-npm run preview
-```
+`.cursor/environment.json` installs with `npm ci` and starts `npm run dev` on port 5173.
