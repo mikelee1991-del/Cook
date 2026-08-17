@@ -43,6 +43,10 @@ assert.match(app, /Pantry|Cook|Saves/, 'primary tabs present');
 const pantry = read('src/components/PantryTab.tsx');
 assert.match(pantry, /Scan shelves/, 'pantry scan section label');
 assert.match(pantry, /BulkUploadZone/, 'bulk upload wired in pantry');
+assert.match(pantry, /RecommendedIngredients/, 'recommended list wired in pantry');
+
+const rec = read('src/lib/recommendIngredients.ts');
+assert.match(rec, /recommendFromStock/, 'recommendation engine present');
 
 const saves = read('src/components/SavesTab.tsx');
 assert.match(saves, /Scan pages in bulk|Scan & sort/, 'saves scan path present');

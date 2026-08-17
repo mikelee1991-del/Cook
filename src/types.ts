@@ -103,3 +103,13 @@ export interface PantryMedia {
   name: string;
   createdAt: string;
 }
+
+export interface RecommendedIngredient {
+  id: string;
+  name: string;
+  note: string;
+  /** Why it was suggested, or blank for manual */
+  reason: string;
+  source: 'auto' | 'manual';
+  createdAt: string;
+}

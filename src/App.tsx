@@ -5,6 +5,7 @@ import { SavesTab } from './components/SavesTab';
 import { usePantry } from './hooks/usePantry';
 import { usePantryMedia } from './hooks/usePantryMedia';
 import { usePhotoScans } from './hooks/usePhotoScans';
+import { useRecommendedIngredients } from './hooks/useRecommendedIngredients';
 import { useSavedRecipes } from './hooks/useSavedRecipes';
 import './App.css';
 
@@ -14,6 +15,14 @@ export default function App() {
   const [tab, setTab] = useState<Tab>('pantry');
   const { items, addItem, removeItem, resetPantry } = usePantry();
   const { media, error: mediaError, addMedia, removeMedia } = usePantryMedia();
+  const {
+    items: recommended,
+    dismissedCount,
+    addManual: addRecommended,
+    updateItem: updateRecommended,
+    removeItem: removeRecommended,
+    clearDismissed: restoreRecommended,
+  } = useRecommendedIngredients(items);
   const {
     recipes: savedRecipes,
     error: savesError,
@@ -102,11 +111,17 @@ export default function App() {
             items={items}
             media={media}
             mediaError={mediaError}
+            recommended={recommended}
+            dismissedCount={dismissedCount}
             onAdd={addItem}
             onRemove={removeItem}
             onReset={resetPantry}
             onAddMedia={addMedia}
             onRemoveMedia={removeMedia}
+            onAddRecommended={addRecommended}
+            onUpdateRecommended={updateRecommended}
+            onRemoveRecommended={removeRecommended}
+            onRestoreRecommended={restoreRecommended}
           />
         )}
         {tab === 'cook' && <CookTab pantry={items} />}

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { groceryCatalog } from '../data/pantrySeed';
-import type { PantryItem, PantryMedia, PantrySection, Store } from '../types';
+import type { PantryItem, PantryMedia, PantrySection, RecommendedIngredient, Store } from '../types';
 import { compressImageFiles } from '../lib/imageCompress';
 import {
   formatExpiryLabel,
@@ -8,6 +8,7 @@ import {
   todayISO,
 } from '../lib/pantryUtils';
 import { BulkUploadZone } from './BulkUploadZone';
+import { RecommendedIngredients } from './RecommendedIngredients';
 
 const MAX_VIDEO_BYTES = 12 * 1024 * 1024;
 
@@ -22,6 +23,8 @@ interface PantryTabProps {
   items: PantryItem[];
   media: PantryMedia[];
   mediaError: string | null;
+  recommended: RecommendedIngredient[];
+  dismissedCount: number;
   onAdd: (input: {
     name: string;
     store: Store;
@@ -33,17 +36,30 @@ interface PantryTabProps {
   onReset: () => void;
   onAddMedia: (items: Omit<PantryMedia, 'id' | 'createdAt'>[]) => void;
   onRemoveMedia: (id: string) => void;
+  onAddRecommended: (name: string, note: string) => void;
+  onUpdateRecommended: (
+    item: RecommendedIngredient,
+    patch: { name?: string; note?: string },
+  ) => void;
+  onRemoveRecommended: (item: RecommendedIngredient) => void;
+  onRestoreRecommended: () => void;
 }
 
 export function PantryTab({
   items,
   media,
   mediaError,
+  recommended,
+  dismissedCount,
   onAdd,
   onRemove,
   onReset,
   onAddMedia,
   onRemoveMedia,
+  onAddRecommended,
+  onUpdateRecommended,
+  onRemoveRecommended,
+  onRestoreRecommended,
 }: PantryTabProps) {
   const [query, setQuery] = useState('');
   const [name, setName] = useState('');
@@ -244,6 +260,15 @@ export function PantryTab({
           </ul>
         )}
       </section>
+
+      <RecommendedIngredients
+        items={recommended}
+        dismissedCount={dismissedCount}
+        onAdd={onAddRecommended}
+        onUpdate={onUpdateRecommended}
+        onRemove={onRemoveRecommended}
+        onRestoreAutos={onRestoreRecommended}
+      />
 
       <div className="pantry-toolbar pantry-toolbar--simple">
         <label className="field field--grow">
