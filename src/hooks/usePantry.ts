@@ -3,7 +3,7 @@ import { createInitialPantry } from '../data/pantrySeed';
 import type { CatalogItem, PantryItem, Store, PantrySection } from '../types';
 import { todayISO, uid } from '../lib/pantryUtils';
 
-const STORAGE_KEY = 'supper-pantry-v2';
+const STORAGE_KEY = 'dinner-pantry-v1';
 
 function loadPantry(): PantryItem[] {
   try {

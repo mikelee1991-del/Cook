@@ -27,7 +27,7 @@ export default function App() {
       <header className="hero">
         <div className="hero__media" aria-hidden="true" />
         <div className="hero__content">
-          <p className="brand">Supper</p>
+          <p className="brand">Dinner</p>
           <h1 className="hero__headline">Figure out dinner from what you already have.</h1>
           <p className="hero__lede">
             Keep a living pantry, filter what to cook, and save recipe photos or internet favorites.

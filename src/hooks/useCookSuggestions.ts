@@ -92,6 +92,6 @@ export const FLAVOR_OPTIONS: { label: string; value: FlavorProfile | 'any' }[] =
 export const SOURCE_OPTIONS: { label: string; value: RecipeSource }[] = [
   { label: 'NYT Cooking', value: 'nyt' },
   { label: 'Your NYT saves', value: 'nyt-saved' },
-  { label: 'Supper kitchen', value: 'original' },
+  { label: 'Dinner kitchen', value: 'original' },
   { label: 'Other', value: 'other' },
 ];
