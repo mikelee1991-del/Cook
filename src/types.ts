@@ -41,6 +41,7 @@ export interface PantryItem {
   purchasedAt: string; // ISO date
   expiresAt: string; // ISO date
   fromPurchaseHistory?: boolean;
+  fromMediaScan?: boolean;
   isStaple?: boolean;
 }
 
@@ -93,27 +94,12 @@ export interface SavedRecipe {
   createdAt: string;
 }
 
-export type BarMediaKind = 'image' | 'video';
+export type PantryMediaKind = 'image' | 'video';
 
-export interface BarMedia {
+export interface PantryMedia {
   id: string;
-  kind: BarMediaKind;
-  /** Compressed data URL for images; object URL or data URL for short videos */
+  kind: PantryMediaKind;
   src: string;
   name: string;
-  createdAt: string;
-}
-
-export type BottleConfidence = 'clear' | 'likely' | 'unclear';
-
-export interface BarBottle {
-  id: string;
-  name: string;
-  /** e.g. whiskey, gin, amaro — optional */
-  category: string;
-  notes: string;
-  /** How identification was made */
-  source: 'vision' | 'manual';
-  confidence: BottleConfidence;
   createdAt: string;
 }
