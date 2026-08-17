@@ -35,11 +35,15 @@ export function compressImageFile(file: File): Promise<string> {
   });
 }
 
-export async function compressImageFiles(files: FileList | File[]): Promise<string[]> {
+export async function compressImageFiles(
+  files: FileList | File[],
+  onProgress?: (done: number, total: number) => void,
+): Promise<string[]> {
   const list = Array.from(files).filter((f) => f.type.startsWith('image/'));
   const out: string[] = [];
-  for (const file of list) {
-    out.push(await compressImageFile(file));
+  for (let i = 0; i < list.length; i++) {
+    out.push(await compressImageFile(list[i]));
+    onProgress?.(i + 1, list.length);
   }
   return out;
 }

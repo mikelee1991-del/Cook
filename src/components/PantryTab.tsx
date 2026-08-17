@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { groceryCatalog } from '../data/pantrySeed';
 import type { PantryItem, PantryMedia, PantrySection, Store } from '../types';
 import { compressImageFiles } from '../lib/imageCompress';
@@ -7,6 +7,7 @@ import {
   getExpirationStatus,
   todayISO,
 } from '../lib/pantryUtils';
+import { BulkUploadZone } from './BulkUploadZone';
 
 const MAX_VIDEO_BYTES = 12 * 1024 * 1024;
 
@@ -55,9 +56,9 @@ export function PantryTab({
   });
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [busyLabel, setBusyLabel] = useState('Processing…');
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [lightbox, setLightbox] = useState<string | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
 
   const suggestions = useMemo(() => {
     const q = name.trim().toLowerCase();
@@ -111,22 +112,26 @@ export function PantryTab({
     setShowSuggestions(false);
   }
 
-  async function handleFiles(files: FileList | null) {
-    if (!files?.length) return;
+  async function handleFiles(files: File[]) {
+    if (!files.length) return;
     setBusy(true);
     setUploadError(null);
+    setBusyLabel(`Preparing ${files.length} file${files.length === 1 ? '' : 's'}…`);
     try {
       const images: File[] = [];
       const videos: File[] = [];
-      Array.from(files).forEach((f) => {
+      files.forEach((f) => {
         if (f.type.startsWith('image/')) images.push(f);
         else if (f.type.startsWith('video/')) videos.push(f);
       });
 
       const added: Omit<PantryMedia, 'id' | 'createdAt'>[] = [];
+      let videoSkipError: string | null = null;
 
       if (images.length) {
-        const compressed = await compressImageFiles(images);
+        const compressed = await compressImageFiles(images, (done, total) => {
+          setBusyLabel(`Compressing ${done} of ${total}…`);
+        });
         compressed.forEach((src, i) => {
           added.push({
             kind: 'image',
@@ -138,25 +143,25 @@ export function PantryTab({
 
       for (const video of videos) {
         if (video.size > MAX_VIDEO_BYTES) {
-          setUploadError(
-            `"${video.name}" is over 12MB. Trim it or upload still photos of each shelf instead.`,
-          );
+          videoSkipError =
+            `"${video.name}" is over 12MB. Trim it or upload still photos of each shelf instead.`;
           continue;
         }
         const src = await readFileAsDataUrl(video);
         added.push({ kind: 'video', src, name: video.name });
       }
 
-      if (!added.length && !uploadError) {
-        setUploadError('Choose photos or videos of your pantry shelves.');
+      if (videoSkipError) setUploadError(videoSkipError);
+      if (!added.length) {
+        setUploadError(videoSkipError || 'Choose photos or videos of your pantry shelves.');
         return;
       }
-      if (added.length) onAddMedia(added);
+      onAddMedia(added);
     } catch {
       setUploadError('Could not read one or more files. Try JPG/PNG or a shorter MP4.');
     } finally {
       setBusy(false);
-      if (fileRef.current) fileRef.current.value = '';
+      setBusyLabel('Processing…');
     }
   }
 
@@ -197,19 +202,17 @@ export function PantryTab({
       <section className="add-form">
         <h3>Scan shelves</h3>
         <p className="add-form__hint">
-          Photograph each shelf straight-on with labels readable. Attach the same files in your
-          Cursor chat so they can be identified, then confirm items here.
+          Bulk-upload shelf photos (or short videos). Straight-on shots with readable labels work
+          best. Attach the same files in Cursor chat for identification.
         </p>
-        <div className="upload-drop upload-drop--tall">
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*,video/*"
-            multiple
-            onChange={(e) => handleFiles(e.target.files)}
-          />
-          <p>{busy ? 'Processing…' : 'Choose pantry photos and/or videos'}</p>
-        </div>
+        <BulkUploadZone
+          accept="image/*,video/*"
+          disabled={busy}
+          busyLabel={busyLabel}
+          idleLabel="Drop many shelf photos or a folder — or click to choose"
+          hint="Multi-select and folder upload supported for bulk pantry scans."
+          onFiles={handleFiles}
+        />
 
         {media.length > 0 && (
           <ul className="bar-media-grid">

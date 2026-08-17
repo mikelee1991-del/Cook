@@ -3,6 +3,7 @@ import type { PhotoScan } from '../hooks/usePhotoScans';
 import type { SortedClip } from '../lib/recipeSort';
 import type { SavedRecipe } from '../types';
 import { compressImageFiles } from '../lib/imageCompress';
+import { BulkUploadZone } from './BulkUploadZone';
 
 interface SavesTabProps {
   recipes: SavedRecipe[];
@@ -37,20 +38,23 @@ export function SavesTab({
   const [url, setUrl] = useState('');
   const [pendingImages, setPendingImages] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+  const [busyLabel, setBusyLabel] = useState('Working…');
   const [formError, setFormError] = useState<string | null>(null);
   const [lightbox, setLightbox] = useState<{ images: string[]; index: number } | null>(
     null,
   );
-  const fileRef = useRef<HTMLInputElement>(null);
   const moreFilesRef = useRef<HTMLInputElement>(null);
   const [appendTargetId, setAppendTargetId] = useState<string | null>(null);
 
-  async function handleFilesSelected(files: FileList | null) {
-    if (!files?.length) return;
+  async function ingestFiles(files: File[]) {
+    if (!files.length) return;
     setBusy(true);
     setFormError(null);
+    setBusyLabel(`Preparing ${files.length} photo${files.length === 1 ? '' : 's'}…`);
     try {
-      const compressed = await compressImageFiles(files);
+      const compressed = await compressImageFiles(files, (done, total) => {
+        setBusyLabel(`Compressing ${done} of ${total}…`);
+      });
       if (!compressed.length) {
         setFormError('Choose image files (JPG, PNG, etc.).');
         return;
@@ -60,7 +64,7 @@ export function SavesTab({
       setFormError('Could not read one or more images. Try a different format.');
     } finally {
       setBusy(false);
-      if (fileRef.current) fileRef.current.value = '';
+      setBusyLabel('Working…');
     }
   }
 
@@ -87,10 +91,12 @@ export function SavesTab({
     setPendingImages([]);
     setFormError(null);
     setBusy(true);
+    setBusyLabel(`Scanning ${images.length} photo${images.length === 1 ? '' : 's'}…`);
     try {
       await onRunScan(images);
     } finally {
       setBusy(false);
+      setBusyLabel('Working…');
     }
   }
 
@@ -138,9 +144,8 @@ export function SavesTab({
       <header className="panel-intro">
         <h2>Recipe saves</h2>
         <p>
-          Upload any page photo — even if it mixes several recipes with other text. Dinner reads
-          the page and sorts recipes vs everything else automatically. You can reclassify clips and
-          keep the ones you want.
+          Upload any page photo — even if it mixes several recipes with other text. Bulk-upload
+          many pages at once; Dinner sorts recipes vs other text automatically.
         </p>
       </header>
 
@@ -179,46 +184,56 @@ export function SavesTab({
 
       {mode === 'photos' ? (
         <form className="add-form" onSubmit={handleScanSubmit}>
-          <h3>Scan a page</h3>
+          <h3>Scan pages in bulk</h3>
           <p className="add-form__hint">
-            One photo can include multiple recipes, notes, ads, or other text — they will be sorted
-            for you.
+            Select dozens of photos, drag a folder, or drop files here. Every page is scanned and
+            sorted. One photo can still hold multiple recipes mixed with other text.
           </p>
-          <div className="field field--grow">
-            <span className="field__label">Images</span>
-            <div className="upload-drop upload-drop--tall">
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={(e) => handleFilesSelected(e.target.files)}
-              />
-              <p>{busy ? 'Working…' : 'Choose one or more photos'}</p>
-            </div>
-          </div>
+          <BulkUploadZone
+            accept="image/*"
+            disabled={busy}
+            busyLabel={busyLabel}
+            idleLabel="Drop many photos or a folder — or click to choose"
+            hint="Supports multi-select and folder upload. You can add more batches before scanning."
+            onFiles={ingestFiles}
+          />
 
           {pendingImages.length > 0 && (
-            <ul className="pending-thumbs">
-              {pendingImages.map((src, i) => (
-                <li key={`${i}-${src.slice(-12)}`}>
-                  <img src={src} alt={`Pending scan photo ${i + 1}`} />
-                  <button
-                    type="button"
-                    className="thumb-remove"
-                    onClick={() => removePending(i)}
-                    aria-label={`Remove photo ${i + 1}`}
-                  >
-                    ×
-                  </button>
-                </li>
-              ))}
-            </ul>
+            <>
+              <p className="result-count">
+                {pendingImages.length} photo{pendingImages.length === 1 ? '' : 's'} ready to scan
+              </p>
+              <ul className="pending-thumbs">
+                {pendingImages.map((src, i) => (
+                  <li key={`${i}-${src.slice(-12)}`}>
+                    <img src={src} alt={`Pending scan photo ${i + 1}`} />
+                    <button
+                      type="button"
+                      className="thumb-remove"
+                      onClick={() => removePending(i)}
+                      aria-label={`Remove photo ${i + 1}`}
+                    >
+                      ×
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <div className="clip-card__actions">
+                <button type="submit" className="btn btn--primary" disabled={busy}>
+                  Scan & sort {pendingImages.length} photo
+                  {pendingImages.length === 1 ? '' : 's'}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn--ghost"
+                  disabled={busy}
+                  onClick={() => setPendingImages([])}
+                >
+                  Clear queue
+                </button>
+              </div>
+            </>
           )}
-
-          <button type="submit" className="btn btn--primary" disabled={busy || !pendingImages.length}>
-            Scan & sort
-          </button>
         </form>
       ) : (
         <form className="add-form" onSubmit={handleLinkSubmit}>
