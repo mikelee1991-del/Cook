@@ -102,7 +102,7 @@ export const recipes: Recipe[] = [
     id: 'orig-turkey-tacos',
     title: 'Weeknight Turkey Tacos',
     source: 'original',
-    sourceLabel: 'Supper kitchen',
+    sourceLabel: 'Dinner kitchen',
     description:
       'Spiced ground turkey in warm tortillas with avocado, cheese, and cilantro.',
     ingredients: [
@@ -127,7 +127,7 @@ export const recipes: Recipe[] = [
     id: 'orig-salmon-bowl',
     title: 'Salmon Rice Bowl with Greens',
     source: 'original',
-    sourceLabel: 'Supper kitchen',
+    sourceLabel: 'Dinner kitchen',
     description: 'Seared salmon over jasmine rice with spinach and a soy-lemon drizzle.',
     ingredients: [
       'Salmon fillet',
@@ -172,7 +172,7 @@ export const recipes: Recipe[] = [
     id: 'orig-black-bean-skillet',
     title: 'Smoky Black Bean & Egg Skillet',
     source: 'original',
-    sourceLabel: 'Supper kitchen',
+    sourceLabel: 'Dinner kitchen',
     description: 'Black beans simmered with spices, finished with eggs and cheddar.',
     ingredients: [
       'Canned black beans',
@@ -218,7 +218,7 @@ export const recipes: Recipe[] = [
     id: 'orig-broccoli-cheddar-pasta',
     title: 'Broccoli Cheddar Pasta',
     source: 'original',
-    sourceLabel: 'Supper kitchen',
+    sourceLabel: 'Dinner kitchen',
     description: 'Stovetop penne with broccoli and a quick cheddar sauce.',
     ingredients: [
       'Pasta penne',
@@ -284,7 +284,7 @@ export const recipes: Recipe[] = [
     id: 'orig-instant-pot-rice-bowl',
     title: 'Instant Pot Turkey & Rice',
     source: 'original',
-    sourceLabel: 'Supper kitchen',
+    sourceLabel: 'Dinner kitchen',
     description: 'One-pot turkey, rice, peas, and spices under pressure.',
     ingredients: [
       'Ground turkey',
@@ -330,7 +330,7 @@ export const recipes: Recipe[] = [
     id: 'orig-carrot-ginger',
     title: 'Carrot-Ginger Skillet with Yogurt',
     source: 'original',
-    sourceLabel: 'Supper kitchen',
+    sourceLabel: 'Dinner kitchen',
     description: 'Soft carrots with warm spices, cooled with a swirl of Greek yogurt.',
     ingredients: [
       'Carrots',
