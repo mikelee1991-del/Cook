@@ -1,14 +1,24 @@
 import { useState } from 'react';
 import { CookTab } from './components/CookTab';
 import { PantryTab } from './components/PantryTab';
+import { SavesTab } from './components/SavesTab';
 import { usePantry } from './hooks/usePantry';
+import { useSavedRecipes } from './hooks/useSavedRecipes';
 import './App.css';
 
-type Tab = 'pantry' | 'cook';
+type Tab = 'pantry' | 'cook' | 'saves';
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('pantry');
   const { items, addItem, removeItem, resetPantry } = usePantry();
+  const {
+    recipes: savedRecipes,
+    error: savesError,
+    addPhotoRecipe,
+    addLinkRecipe,
+    removeRecipe,
+    addImagesToRecipe,
+  } = useSavedRecipes();
 
   return (
     <div className="app">
@@ -20,8 +30,7 @@ export default function App() {
           <p className="brand">Supper</p>
           <h1 className="hero__headline">Figure out dinner from what you already have.</h1>
           <p className="hero__lede">
-            Keep a living pantry, then filter recipes by ingredients, time, ease, apparatus, and
-            flavor.
+            Keep a living pantry, filter what to cook, and save recipe photos or internet favorites.
           </p>
           <div className="hero__cta" role="group" aria-label="Choose a tab">
             <button
@@ -37,6 +46,13 @@ export default function App() {
               onClick={() => setTab('cook')}
             >
               Decide dinner
+            </button>
+            <button
+              type="button"
+              className={tab === 'saves' ? 'btn btn--primary' : 'btn btn--on-media'}
+              onClick={() => setTab('saves')}
+            >
+              Save recipes
             </button>
           </div>
         </div>
@@ -59,25 +75,42 @@ export default function App() {
         >
           Cook
         </button>
+        <button
+          type="button"
+          className={tab === 'saves' ? 'tabs__btn is-active' : 'tabs__btn'}
+          onClick={() => setTab('saves')}
+          aria-current={tab === 'saves' ? 'page' : undefined}
+        >
+          Saves
+        </button>
       </nav>
 
       <main className="main">
-        {tab === 'pantry' ? (
+        {tab === 'pantry' && (
           <PantryTab
             items={items}
             onAdd={addItem}
             onRemove={removeItem}
             onReset={resetPantry}
           />
-        ) : (
-          <CookTab pantry={items} />
+        )}
+        {tab === 'cook' && <CookTab pantry={items} />}
+        {tab === 'saves' && (
+          <SavesTab
+            recipes={savedRecipes}
+            storageError={savesError}
+            onAddPhotos={addPhotoRecipe}
+            onAddLink={addLinkRecipe}
+            onRemove={removeRecipe}
+            onAddImages={addImagesToRecipe}
+          />
         )}
       </main>
 
       <footer className="footer">
         <p>
-          Pantry persists in this browser. Purchase-history and NYT saved recipes are starter
-          seeds until live exports are connected.
+          Pantry and saves persist in this browser. Purchase-history and NYT saved recipes are
+          starter seeds until live exports are connected.
         </p>
       </footer>
     </div>

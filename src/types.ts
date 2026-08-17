@@ -78,3 +78,17 @@ export interface CookFilters {
 }
 
 export type ExpirationStatus = 'ok' | 'soon' | 'expired';
+
+export type SavedRecipeKind = 'photos' | 'link';
+
+export interface SavedRecipe {
+  id: string;
+  title: string;
+  notes: string;
+  kind: SavedRecipeKind;
+  /** Favorite recipe URL from the internet */
+  url?: string;
+  /** One or more recipe photo data URLs (compressed) */
+  images: string[];
+  createdAt: string;
+}
