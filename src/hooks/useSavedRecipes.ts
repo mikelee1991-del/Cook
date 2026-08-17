@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { SavedRecipe } from '../types';
 import { uid } from '../lib/pantryUtils';
 
-const STORAGE_KEY = 'supper-saves-v1';
+const STORAGE_KEY = 'dinner-saves-v1';
 
 function loadSaves(): SavedRecipe[] {
   try {
