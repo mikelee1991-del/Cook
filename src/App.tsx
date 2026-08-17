@@ -4,6 +4,7 @@ import { PantryTab } from './components/PantryTab';
 import { SavesTab } from './components/SavesTab';
 import { usePantry } from './hooks/usePantry';
 import { usePantryMedia } from './hooks/usePantryMedia';
+import { usePhotoScans } from './hooks/usePhotoScans';
 import { useSavedRecipes } from './hooks/useSavedRecipes';
 import './App.css';
 
@@ -21,6 +22,14 @@ export default function App() {
     removeRecipe,
     addImagesToRecipe,
   } = useSavedRecipes();
+  const {
+    scans,
+    error: scanError,
+    runScan,
+    removeScan,
+    removeClip,
+    setClipKind,
+  } = usePhotoScans();
 
   return (
     <div className="app">
@@ -32,7 +41,7 @@ export default function App() {
           <p className="brand">Dinner</p>
           <h1 className="hero__headline">Figure out dinner from what you already have.</h1>
           <p className="hero__lede">
-            Scan your pantry shelves, filter what to cook, and save recipe photos or links.
+            Scan pantry shelves and recipe pages, filter what to cook, and keep what matters.
           </p>
           <div className="hero__cta" role="group" aria-label="Choose a tab">
             <button
@@ -104,19 +113,24 @@ export default function App() {
         {tab === 'saves' && (
           <SavesTab
             recipes={savedRecipes}
-            storageError={savesError}
+            scans={scans}
+            storageError={savesError || scanError}
             onAddPhotos={addPhotoRecipe}
             onAddLink={addLinkRecipe}
             onRemove={removeRecipe}
             onAddImages={addImagesToRecipe}
+            onRunScan={runScan}
+            onRemoveScan={removeScan}
+            onRemoveClip={removeClip}
+            onSetClipKind={setClipKind}
           />
         )}
       </main>
 
       <footer className="footer">
         <p>
-          Data stays in this browser. Only basic spices are autopopulated; shelf items come from
-          your photos or manual entry.
+          Data stays in this browser. Recipe page scans sort recipes vs other text automatically —
+          keep or discard each clip.
         </p>
       </footer>
     </div>

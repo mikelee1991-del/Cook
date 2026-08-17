@@ -1,23 +1,35 @@
 import { useRef, useState } from 'react';
+import type { PhotoScan } from '../hooks/usePhotoScans';
+import type { SortedClip } from '../lib/recipeSort';
 import type { SavedRecipe } from '../types';
 import { compressImageFiles } from '../lib/imageCompress';
 
 interface SavesTabProps {
   recipes: SavedRecipe[];
+  scans: PhotoScan[];
   storageError: string | null;
   onAddPhotos: (input: { title: string; notes: string; images: string[] }) => void;
   onAddLink: (input: { title: string; url: string; notes: string }) => void;
   onRemove: (id: string) => void;
   onAddImages: (id: string, images: string[]) => void;
+  onRunScan: (images: string[]) => Promise<string | null>;
+  onRemoveScan: (id: string) => void;
+  onRemoveClip: (scanId: string, clipId: string) => void;
+  onSetClipKind: (scanId: string, clipId: string, kind: SortedClip['kind']) => void;
 }
 
 export function SavesTab({
   recipes,
+  scans,
   storageError,
   onAddPhotos,
   onAddLink,
   onRemove,
   onAddImages,
+  onRunScan,
+  onRemoveScan,
+  onRemoveClip,
+  onSetClipKind,
 }: SavesTabProps) {
   const [mode, setMode] = useState<'photos' | 'link'>('photos');
   const [title, setTitle] = useState('');
@@ -40,7 +52,7 @@ export function SavesTab({
     try {
       const compressed = await compressImageFiles(files);
       if (!compressed.length) {
-        setFormError('Choose image files (JPG, PNG, HEIC converted by your browser, etc.).');
+        setFormError('Choose image files (JPG, PNG, etc.).');
         return;
       }
       setPendingImages((prev) => [...prev, ...compressed]);
@@ -65,17 +77,21 @@ export function SavesTab({
     }
   }
 
-  function handlePhotoSubmit(e: React.FormEvent) {
+  async function handleScanSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!pendingImages.length) {
-      setFormError('Add at least one recipe photo.');
+      setFormError('Add at least one photo to scan.');
       return;
     }
-    onAddPhotos({ title, notes, images: pendingImages });
-    setTitle('');
-    setNotes('');
+    const images = [...pendingImages];
     setPendingImages([]);
     setFormError(null);
+    setBusy(true);
+    try {
+      await onRunScan(images);
+    } finally {
+      setBusy(false);
+    }
   }
 
   function handleLinkSubmit(e: React.FormEvent) {
@@ -95,16 +111,36 @@ export function SavesTab({
     setPendingImages((prev) => prev.filter((_, i) => i !== index));
   }
 
+  function keepRecipeClip(scan: PhotoScan, clip: SortedClip) {
+    const pageNote =
+      scan.images.length > 1 ? `From page ${clip.sourceImageIndex + 1}` : 'From scanned photo';
+    onAddPhotos({
+      title: clip.title,
+      notes: `${pageNote}\n\n${clip.body}`.trim(),
+      images: [scan.images[clip.sourceImageIndex]].filter(Boolean),
+    });
+    onRemoveClip(scan.id, clip.id);
+  }
+
   const photoCount = recipes.filter((r) => r.kind === 'photos').length;
   const linkCount = recipes.filter((r) => r.kind === 'link').length;
+  const recipeClips = scans.reduce(
+    (n, s) => n + s.clips.filter((c) => c.kind === 'recipe').length,
+    0,
+  );
+  const otherClips = scans.reduce(
+    (n, s) => n + s.clips.filter((c) => c.kind === 'other').length,
+    0,
+  );
 
   return (
     <div className="tab-panel saves-panel">
       <header className="panel-intro">
         <h2>Recipe saves</h2>
         <p>
-          Upload one or more photos of a printed or handwritten recipe, or save a favorite link
-          from anywhere on the internet.
+          Upload any page photo — even if it mixes several recipes with other text. Dinner reads
+          the page and sorts recipes vs everything else automatically. You can reclassify clips and
+          keep the ones you want.
         </p>
       </header>
 
@@ -125,7 +161,7 @@ export function SavesTab({
             setFormError(null);
           }}
         >
-          Upload photos
+          Scan photos
         </button>
         <button
           type="button"
@@ -142,40 +178,23 @@ export function SavesTab({
       </div>
 
       {mode === 'photos' ? (
-        <form className="add-form" onSubmit={handlePhotoSubmit}>
-          <h3>Photo recipe</h3>
+        <form className="add-form" onSubmit={handleScanSubmit}>
+          <h3>Scan a page</h3>
           <p className="add-form__hint">
-            Drop in a single page or a multi-page shoot — all images stay together as one recipe.
+            One photo can include multiple recipes, notes, ads, or other text — they will be sorted
+            for you.
           </p>
-          <div className="add-form__grid saves-form-grid">
-            <label className="field field--grow">
-              <span className="field__label">Title</span>
+          <div className="field field--grow">
+            <span className="field__label">Images</span>
+            <div className="upload-drop upload-drop--tall">
               <input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Grandma’s lasagna"
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={(e) => handleFilesSelected(e.target.files)}
               />
-            </label>
-            <label className="field field--grow">
-              <span className="field__label">Notes (optional)</span>
-              <input
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Serves 6, oven 375…"
-              />
-            </label>
-            <div className="field field--grow">
-              <span className="field__label">Images</span>
-              <div className="upload-drop">
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={(e) => handleFilesSelected(e.target.files)}
-                />
-                <p>{busy ? 'Compressing…' : 'Choose one or more images'}</p>
-              </div>
+              <p>{busy ? 'Working…' : 'Choose one or more photos'}</p>
             </div>
           </div>
 
@@ -183,7 +202,7 @@ export function SavesTab({
             <ul className="pending-thumbs">
               {pendingImages.map((src, i) => (
                 <li key={`${i}-${src.slice(-12)}`}>
-                  <img src={src} alt={`Pending recipe photo ${i + 1}`} />
+                  <img src={src} alt={`Pending scan photo ${i + 1}`} />
                   <button
                     type="button"
                     className="thumb-remove"
@@ -197,8 +216,8 @@ export function SavesTab({
             </ul>
           )}
 
-          <button type="submit" className="btn btn--primary" disabled={busy}>
-            Save photo recipe
+          <button type="submit" className="btn btn--primary" disabled={busy || !pendingImages.length}>
+            Scan & sort
           </button>
         </form>
       ) : (
@@ -241,9 +260,130 @@ export function SavesTab({
         </form>
       )}
 
+      {scans.length > 0 && (
+        <section className="scan-results">
+          <h3 className="scan-results__heading">Sorted from photos</h3>
+          <p className="result-count">
+            {recipeClips} recipe{recipeClips === 1 ? '' : 's'} · {otherClips} other text block
+            {otherClips === 1 ? '' : 's'}
+          </p>
+
+          <ul className="saves-list">
+            {scans.map((scan) => (
+              <li key={scan.id} className="save-card scan-card">
+                <div className="save-card__top">
+                  <div>
+                    <p className="recipe__source">
+                      {scan.status === 'scanning'
+                        ? 'Scanning…'
+                        : scan.status === 'error'
+                          ? 'Scan failed'
+                          : 'Scan complete'}
+                    </p>
+                    <h3 className="recipe__title">
+                      {scan.images.length} photo{scan.images.length === 1 ? '' : 's'}
+                    </h3>
+                    {scan.status === 'scanning' && (
+                      <p className="recipe__desc">{scan.progress}</p>
+                    )}
+                    {scan.error && <p className="expiry-banner__expired">{scan.error}</p>}
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn--ghost"
+                    onClick={() => onRemoveScan(scan.id)}
+                    disabled={scan.status === 'scanning'}
+                  >
+                    Dismiss
+                  </button>
+                </div>
+
+                <ul className="save-gallery">
+                  {scan.images.map((src, i) => (
+                    <li key={`${scan.id}-img-${i}`}>
+                      <button
+                        type="button"
+                        className="save-gallery__btn"
+                        onClick={() => setLightbox({ images: scan.images, index: i })}
+                      >
+                        <img src={src} alt={`Scan source ${i + 1}`} />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+
+                {scan.status === 'done' && scan.clips.length === 0 && (
+                  <p className="empty-state">No readable text found on these photos.</p>
+                )}
+
+                {scan.clips.length > 0 && (
+                  <ul className="clip-list">
+                    {scan.clips.map((clip) => (
+                      <li
+                        key={clip.id}
+                        className={
+                          clip.kind === 'recipe' ? 'clip-card clip-card--recipe' : 'clip-card'
+                        }
+                      >
+                        <div className="clip-card__top">
+                          <span className="tag">
+                            {clip.kind === 'recipe' ? 'Recipe' : 'Other text'}
+                          </span>
+                          <span className="clip-card__meta">
+                            Page {clip.sourceImageIndex + 1} ·{' '}
+                            {Math.round(clip.confidence * 100)}% match
+                          </span>
+                        </div>
+                        <h4 className="clip-card__title">{clip.title}</h4>
+                        <pre className="clip-card__body">{clip.body}</pre>
+                        <div className="clip-card__actions">
+                          {clip.kind === 'recipe' ? (
+                            <>
+                              <button
+                                type="button"
+                                className="btn btn--primary"
+                                onClick={() => keepRecipeClip(scan, clip)}
+                              >
+                                Keep as saved recipe
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn--ghost"
+                                onClick={() => onSetClipKind(scan.id, clip.id, 'other')}
+                              >
+                                Mark as other
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              type="button"
+                              className="btn btn--ghost"
+                              onClick={() => onSetClipKind(scan.id, clip.id, 'recipe')}
+                            >
+                              Mark as recipe
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className="btn btn--ghost"
+                            onClick={() => onRemoveClip(scan.id, clip.id)}
+                          >
+                            Discard
+                          </button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       <div className="saves-summary">
         <p className="result-count">
-          {recipes.length} save{recipes.length === 1 ? '' : 's'}
+          {recipes.length} kept save{recipes.length === 1 ? '' : 's'}
           {recipes.length > 0 && (
             <>
               {' '}
@@ -262,7 +402,7 @@ export function SavesTab({
                   {recipe.kind === 'photos' ? 'Photo recipe' : 'Internet link'}
                 </p>
                 <h3 className="recipe__title">{recipe.title}</h3>
-                {recipe.notes && <p className="recipe__desc">{recipe.notes}</p>}
+                {recipe.notes && <p className="recipe__desc recipe__desc--clamp">{recipe.notes}</p>}
                 <p className="save-card__date">
                   Saved {new Date(recipe.createdAt).toLocaleDateString()}
                 </p>
@@ -319,8 +459,8 @@ export function SavesTab({
         ))}
       </ul>
 
-      {recipes.length === 0 && (
-        <p className="empty-state">No saves yet — upload photos or paste a favorite link above.</p>
+      {recipes.length === 0 && scans.length === 0 && (
+        <p className="empty-state">No saves yet — scan a page or paste a favorite link above.</p>
       )}
 
       <input
