@@ -37,6 +37,7 @@ export default function App() {
     scans,
     error: scanError,
     runScan,
+    rescan,
     removeScan,
     removeClip,
     setClipKind,
@@ -144,6 +145,7 @@ export default function App() {
             onAddImages={addImagesToRecipe}
             onRunScan={runScan}
             onRemoveScan={removeScan}
+            onRescan={rescan}
             onRemoveClip={removeClip}
             onSetClipKind={setClipKind}
           />

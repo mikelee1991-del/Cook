@@ -9,6 +9,7 @@
     "lint": "oxlint",
     "test:recommend": "tsx scripts/test-recommend.ts",
     "test:cook": "tsx scripts/test-cook.ts",
+    "test:ocr": "tsx scripts/test-ocr.ts",
     "preview": "vite preview",
     "validate": "node scripts/validate.mjs"
   },

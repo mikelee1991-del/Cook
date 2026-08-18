@@ -24,6 +24,7 @@ function read(rel) {
 run('lint', 'npm', ['run', 'lint']);
 run('recommend tests', 'npm', ['run', 'test:recommend']);
 run('cook tests', 'npm', ['run', 'test:cook']);
+run('ocr tests', 'npm', ['run', 'test:ocr']);
 run('build', 'npm', ['run', 'build']);
 
 console.log('\n→ smoke dist');
@@ -61,8 +62,21 @@ assert.match(cook, /type="range"/, 'cook filters should use sliders');
 assert.doesNotMatch(cook, /Instant Pot|Air fryer|air-fryer|instant-pot/, 'cook UI should not offer Instant Pot or air fryer');
 assert.match(read('src/lib/cookFilters.ts'), /TIME_SLIDER/, 'time slider constants present');
 
+assert.match(read('src/lib/scanImages.ts'), /prepareImageForOcr/, 'OCR preprocess wired');
+assert.match(read('src/lib/ocrPreprocess.ts'), /grayscaleContrast/, 'contrast stretch for recipe photos');
+assert.match(read('src/components/SavesTab.tsx'), /Scan again/, 'rescan existing photos');
+
 const pkg = JSON.parse(read('package.json'));
-for (const script of ['dev', 'build', 'lint', 'preview', 'validate', 'test:recommend', 'test:cook']) {
+for (const script of [
+  'dev',
+  'build',
+  'lint',
+  'preview',
+  'validate',
+  'test:recommend',
+  'test:cook',
+  'test:ocr',
+]) {
   assert.ok(pkg.scripts?.[script], `package.json missing script: ${script}`);
 }
 
