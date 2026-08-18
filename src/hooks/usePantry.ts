@@ -3,11 +3,11 @@ import { createInitialPantry } from '../data/pantrySeed';
 import type { CatalogItem, PantryItem, Store, PantrySection } from '../types';
 import { todayISO, uid } from '../lib/pantryUtils';
 
-const STORAGE_KEY = 'dinner-pantry-v1';
+import { PANTRY_KEY } from '../lib/appStorage';
 
 function loadPantry(): PantryItem[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(PANTRY_KEY);
     if (!raw) return createInitialPantry();
     const parsed = JSON.parse(raw) as PantryItem[];
     if (!Array.isArray(parsed)) return createInitialPantry();
@@ -21,7 +21,7 @@ export function usePantry() {
   const [items, setItems] = useState<PantryItem[]>(() => loadPantry());
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    localStorage.setItem(PANTRY_KEY, JSON.stringify(items));
   }, [items]);
 
   const addItem = useCallback(

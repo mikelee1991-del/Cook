@@ -2,11 +2,11 @@ import { useCallback, useEffect, useState } from 'react';
 import type { PantryMedia } from '../types';
 import { uid } from '../lib/pantryUtils';
 
-const MEDIA_KEY = 'dinner-pantry-media-v1';
+import { PANTRY_MEDIA_KEY } from '../lib/appStorage';
 
 function loadMedia(): PantryMedia[] {
   try {
-    const raw = localStorage.getItem(MEDIA_KEY);
+    const raw = localStorage.getItem(PANTRY_MEDIA_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as PantryMedia[];
     return Array.isArray(parsed) ? parsed : [];
@@ -21,7 +21,7 @@ export function usePantryMedia() {
 
   useEffect(() => {
     try {
-      localStorage.setItem(MEDIA_KEY, JSON.stringify(media));
+      localStorage.setItem(PANTRY_MEDIA_KEY, JSON.stringify(media));
       setError(null);
     } catch {
       setError('Storage is full — remove some pantry photos/videos and try again.');

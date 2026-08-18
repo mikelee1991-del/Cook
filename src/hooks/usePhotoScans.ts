@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { SortedClip } from '../lib/recipeSort';
+import { PHOTO_SCANS_KEY } from '../lib/appStorage';
 import { scanImagesForRecipes } from '../lib/scanImages';
 import { uid } from '../lib/pantryUtils';
 
@@ -15,11 +16,9 @@ export interface PhotoScan {
   createdAt: string;
 }
 
-const STORAGE_KEY = 'dinner-photo-scans-v1';
-
 function loadScans(): PhotoScan[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(PHOTO_SCANS_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as PhotoScan[];
     // Drop in-progress scans from a previous session
@@ -38,7 +37,7 @@ export function usePhotoScans() {
   useEffect(() => {
     try {
       const toSave = scans.filter((s) => s.status !== 'scanning');
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+      localStorage.setItem(PHOTO_SCANS_KEY, JSON.stringify(toSave));
       setError(null);
     } catch {
       setError('Storage is full — remove some scanned pages.');

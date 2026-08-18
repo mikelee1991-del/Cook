@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { SavedRecipe } from '../types';
+import { SAVES_KEY } from '../lib/appStorage';
 import { uid } from '../lib/pantryUtils';
-
-const STORAGE_KEY = 'dinner-saves-v1';
 
 function loadSaves(): SavedRecipe[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(SAVES_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as SavedRecipe[];
     return Array.isArray(parsed) ? parsed : [];
@@ -21,7 +20,7 @@ export function useSavedRecipes() {
 
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(recipes));
+      localStorage.setItem(SAVES_KEY, JSON.stringify(recipes));
       setError(null);
     } catch {
       setError(
