@@ -1,4 +1,5 @@
 import type { CookFilters, CookingApparatus, FlavorProfile, PantryItem, Recipe, RecipeSource } from '../types';
+import type { FrozenCookTiming } from '../lib/frozenHandling';
 import { SOURCE_OPTIONS, useCookSuggestions } from '../hooks/useCookSuggestions';
 import {
   AVAILABLE_APPARATUS,
@@ -54,8 +55,9 @@ export function CookTab({ pantry }: CookTabProps) {
       <header className="panel-intro">
         <h2>What should you cook?</h2>
         <p>
-          Suggestions ranked by what you already have. Drag time and effort; tick the gear you
-          actually own. NYT Cooking links open on their site.
+          Suggestions ranked by what you already have. Frozen stock adds cook-from-frozen or
+          rapid-thaw time — not an overnight defrost. Drag time and effort; tick the gear you
+          actually own.
         </p>
       </header>
 
@@ -166,8 +168,8 @@ export function CookTab({ pantry }: CookTabProps) {
       </p>
 
       <ul className="recipe-list">
-        {suggestions.map(({ recipe, match }) => (
-          <RecipeSuggestion key={recipe.id} recipe={recipe} match={match} />
+        {suggestions.map(({ recipe, match, timing }) => (
+          <RecipeSuggestion key={recipe.id} recipe={recipe} match={match} timing={timing} />
         ))}
       </ul>
 
@@ -184,6 +186,7 @@ export function CookTab({ pantry }: CookTabProps) {
 function RecipeSuggestion({
   recipe,
   match,
+  timing,
 }: {
   recipe: Recipe;
   match: {
@@ -193,6 +196,7 @@ function RecipeSuggestion({
     coverage: number;
     hasAll: boolean;
   };
+  timing: FrozenCookTiming;
 }) {
   const pct = Math.round(match.coverage * 100);
 
@@ -211,12 +215,19 @@ function RecipeSuggestion({
       </div>
 
       <div className="recipe__meta">
-        <span>{recipe.minutes} min</span>
-        <span>{recipe.ease}</span>
+        <span>
+          {timing.minutes} min
+          {timing.extraMinutes > 0 ? ` (${recipe.minutes} + ${timing.extraMinutes} frozen)` : ''}
+        </span>
+        <span>{timing.ease}{timing.ease !== recipe.ease ? ' with thaw' : ''}</span>
         <span>{recipe.apparatus.join(' · ')}</span>
         <span>{recipe.flavors.join(' · ')}</span>
         <span>{recipe.servings} servings</span>
       </div>
+
+      {timing.notes.length > 0 && (
+        <p className="recipe__frozen">{timing.notes.join(' · ')}</p>
+      )}
 
       <div className="recipe__ingredients">
         <p>

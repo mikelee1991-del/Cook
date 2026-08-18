@@ -13,7 +13,8 @@ import {
   formatTimeFilter,
   recipePassesCookFilters,
 } from '../src/lib/cookFilters.ts';
-import type { CookFilters, Recipe } from '../src/types.ts';
+import type { CookFilters, PantryItem, Recipe } from '../src/types.ts';
+import { applyFrozenTiming, frozenMethodFor } from '../src/lib/frozenHandling.ts';
 
 const allIds = AVAILABLE_APPARATUS.map((a) => a.id);
 
@@ -68,5 +69,48 @@ assert.equal(formatEaseFilter(EASE_SLIDER_MAX), 'Any effort');
 console.log('→ apparatus is owned gear, not a single appliance');
 assert.equal(recipePassesCookFilters(grilled, false, filters({ apparatus: ['stove'] })), false);
 assert.equal(recipePassesCookFilters(grilled, false, filters({ apparatus: ['grill'] })), true);
+
+console.log('→ frozen stock adds cook-from-frozen or rapid-thaw, not overnight');
+
+function item(name: string, frozen: boolean): PantryItem {
+  return {
+    id: name,
+    name,
+    store: 'Other',
+    section: frozen ? 'frozen' : 'refrigerated',
+    quantity: '1',
+    purchasedAt: '2026-01-01',
+    expiresAt: '2099-01-01',
+    frozen,
+  };
+}
+
+assert.equal(frozenMethodFor('Salmon fillet', salmon), 'cook-from-frozen');
+assert.equal(frozenMethodFor('Chicken thighs', grilled), 'rapid-thaw');
+assert.equal(frozenMethodFor('Frozen peas', turkey), 'cook-from-frozen');
+
+const salmonFrozen = applyFrozenTiming(salmon, [item('Salmon fillet', true)]);
+assert.equal(salmonFrozen.minutes, 32);
+assert.equal(salmonFrozen.ease, 'easy');
+assert.match(salmonFrozen.notes.join(' '), /from frozen/);
+
+const salmonFresh = applyFrozenTiming(salmon, [item('Salmon fillet', false)]);
+assert.equal(salmonFresh.minutes, 20);
+
+const grillFrozen = applyFrozenTiming(grilled, [item('Chicken thighs', true)]);
+assert.equal(grillFrozen.minutes, 55);
+assert.equal(grillFrozen.ease, 'involved');
+assert.match(grillFrozen.notes.join(' '), /Rapid-thaw/);
+
+assert.equal(
+  recipePassesCookFilters(salmon, false, filters({ maxMinutes: 25 }), {
+    minutes: salmonFrozen.minutes,
+    easeRank: salmonFrozen.easeRank,
+  }),
+  false,
+);
+
+const peasNamed = applyFrozenTiming(turkey, [item('Frozen peas', true)]);
+assert.equal(peasNamed.minutes, turkey.minutes, 'recipe already calls for frozen peas');
 
 console.log('test-cook: ok');

@@ -53,13 +53,16 @@ export function recipePassesCookFilters(
   recipe: Recipe,
   hasAllIngredients: boolean,
   filters: CookFilters,
+  timing?: { minutes: number; easeRank: number },
 ): boolean {
   if (!filters.sources.includes(recipe.source)) return false;
   if (filters.requireAllIngredients && !hasAllIngredients) return false;
-  if (filters.maxMinutes < TIME_SLIDER_MAX && recipe.minutes > filters.maxMinutes) {
+  const minutes = timing?.minutes ?? recipe.minutes;
+  const easeRank = timing?.easeRank ?? EASE_RANK[recipe.ease];
+  if (filters.maxMinutes < TIME_SLIDER_MAX && minutes > filters.maxMinutes) {
     return false;
   }
-  if (EASE_RANK[recipe.ease] > filters.maxEase) return false;
+  if (easeRank > filters.maxEase) return false;
   if (!recipe.apparatus.some((item) => filters.apparatus.includes(item))) return false;
   if (filters.flavors.length > 0 && !recipe.flavors.some((f) => filters.flavors.includes(f))) {
     return false;

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { CookFilters, PantryItem, Recipe, RecipeSource } from '../types';
 import { recipes } from '../data/recipes';
+import { applyFrozenTiming } from '../lib/frozenHandling';
 import { matchRecipeToPantry } from '../lib/pantryUtils';
 import {
   AVAILABLE_APPARATUS,
@@ -25,14 +26,18 @@ export function useCookSuggestions(pantry: PantryItem[]) {
     return recipes
       .map((recipe) => {
         const match = matchRecipeToPantry(recipe, pantry);
-        return { recipe, match };
+        const timing = applyFrozenTiming(recipe, pantry);
+        return { recipe, match, timing };
       })
-      .filter(({ recipe, match }) =>
-        recipePassesCookFilters(recipe, match.hasAll, filters),
+      .filter(({ recipe, match, timing }) =>
+        recipePassesCookFilters(recipe, match.hasAll, filters, {
+          minutes: timing.minutes,
+          easeRank: timing.easeRank,
+        }),
       )
       .sort((a, b) => {
         if (b.match.coverage !== a.match.coverage) return b.match.coverage - a.match.coverage;
-        return a.recipe.minutes - b.recipe.minutes;
+        return a.timing.minutes - b.timing.minutes;
       });
   }, [pantry, filters]);
 

@@ -491,9 +491,20 @@
   letter-spacing: 0.02em;
 }
 
+.tag--frozen {
+  background: rgba(90, 140, 190, 0.18);
+  color: #2a5270;
+}
+
 .tag--staple {
   background: rgba(196, 122, 44, 0.16);
   color: #7a4a12;
+}
+
+.recipe__frozen {
+  margin: 0;
+  color: #2a5270;
+  font-size: 0.92rem;
 }
 
 .item-row__expiry {

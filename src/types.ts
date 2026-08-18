@@ -41,6 +41,8 @@ export interface PantryItem {
   fromPurchaseHistory?: boolean;
   fromMediaScan?: boolean;
   isStaple?: boolean;
+  /** In the freezer. Section may also be `frozen`. */
+  frozen?: boolean;
 }
 
 export interface CatalogItem {

@@ -11,7 +11,10 @@ function loadPantry(): PantryItem[] {
     if (!raw) return createInitialPantry();
     const parsed = JSON.parse(raw) as PantryItem[];
     if (!Array.isArray(parsed)) return createInitialPantry();
-    return parsed;
+    return parsed.map((item) => ({
+      ...item,
+      frozen: item.frozen ?? item.section === 'frozen',
+    }));
   } catch {
     return createInitialPantry();
   }
@@ -31,17 +34,20 @@ export function usePantry() {
       section: PantrySection;
       quantity: string;
       expiresAt: string;
+      frozen?: boolean;
       fromCatalog?: CatalogItem;
     }) => {
+      const frozen = input.frozen ?? input.section === 'frozen';
       const item: PantryItem = {
         id: uid('pantry'),
         name: input.name.trim(),
         store: input.store,
-        section: input.section,
+        section: frozen ? 'frozen' : input.section,
         quantity: input.quantity.trim() || '1',
         purchasedAt: todayISO(),
         expiresAt: input.expiresAt,
         fromPurchaseHistory: false,
+        frozen,
       };
       setItems((prev) => [item, ...prev]);
       return item;
