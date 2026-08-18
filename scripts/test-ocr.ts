@@ -4,6 +4,7 @@
  */
 import assert from 'node:assert/strict';
 import { cleanupOcrText, findColumnGutter, ocrTextLooksWeak } from '../src/lib/ocrText.ts';
+import { sortPageText } from '../src/lib/recipeSort.ts';
 
 console.log('→ column gutter');
 const single = Array.from({ length: 200 }, () => 40);
@@ -31,5 +32,23 @@ assert.equal(
   ),
   false,
 );
+
+console.log('→ split ingredient lines still count as a recipe');
+const clips = sortPageText(
+  `Lemon Garlic Chicken
+
+4 chicken thighs
+
+2 tbsp olive oil
+
+1 tsp kosher salt
+
+1. Preheat oven to 425 F.
+
+3. Roast 35 minutes until crisp.`,
+  0,
+);
+assert.ok(clips.some((c) => c.kind === 'recipe'), JSON.stringify(clips.map((c) => c.kind)));
+assert.match(clips.find((c) => c.kind === 'recipe')?.body || '', /chicken thighs/);
 
 console.log('test-ocr: ok');
