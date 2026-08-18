@@ -9,6 +9,7 @@ export function pantryDraftFromName(name: string): {
   section: PantrySection;
   quantity: string;
   expiresAt: string;
+  frozen: boolean;
 } {
   const trimmed = name.trim();
   const hit =
@@ -18,11 +19,13 @@ export function pantryDraftFromName(name: string): {
   const d = new Date();
   d.setHours(12, 0, 0, 0);
   d.setDate(d.getDate() + days);
+  const section = hit?.section ?? 'fresh';
   return {
     name: hit?.name ?? trimmed,
     store: 'Other',
-    section: hit?.section ?? 'fresh',
+    section,
     quantity: hit?.quantity || '1',
     expiresAt: d.toISOString().slice(0, 10),
+    frozen: section === 'frozen',
   };
 }

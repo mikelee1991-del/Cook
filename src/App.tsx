@@ -16,7 +16,7 @@ type Tab = 'pantry' | 'cook' | 'saves';
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('pantry');
-  const { items, addItem, removeItem, resetPantry } = usePantry();
+  const { items, addItem, removeItem, updateItem, resetPantry } = usePantry();
   const { media, error: mediaError, addMedia, removeMedia } = usePantryMedia();
   const {
     items: recommended,
@@ -124,6 +124,7 @@ export default function App() {
             dismissedCount={dismissedCount}
             onAdd={addItem}
             onRemove={removeItem}
+            onUpdate={updateItem}
             onReset={resetPantry}
             onAddMedia={addMedia}
             onRemoveMedia={removeMedia}

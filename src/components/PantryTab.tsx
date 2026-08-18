@@ -7,6 +7,7 @@ import {
   getExpirationStatus,
   todayISO,
 } from '../lib/pantryUtils';
+import { isFrozenItem } from '../lib/frozenHandling';
 import { BulkUploadZone } from './BulkUploadZone';
 import { RecommendedIngredients } from './RecommendedIngredients';
 
@@ -31,8 +32,10 @@ interface PantryTabProps {
     section: PantrySection;
     quantity: string;
     expiresAt: string;
+    frozen?: boolean;
   }) => void;
   onRemove: (id: string) => void;
+  onUpdate: (id: string, patch: Partial<PantryItem>) => void;
   onReset: () => void;
   onAddMedia: (items: Omit<PantryMedia, 'id' | 'createdAt'>[]) => void;
   onRemoveMedia: (id: string) => void;
@@ -54,6 +57,7 @@ export function PantryTab({
   dismissedCount,
   onAdd,
   onRemove,
+  onUpdate,
   onReset,
   onAddMedia,
   onRemoveMedia,
@@ -67,6 +71,7 @@ export function PantryTab({
   const [name, setName] = useState('');
   const [section, setSection] = useState<PantrySection>('fresh');
   const [quantity, setQuantity] = useState('');
+  const [frozen, setFrozen] = useState(false);
   const [expiresAt, setExpiresAt] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() + 7);
@@ -108,6 +113,7 @@ export function PantryTab({
     if (!hit) return;
     setName(hit.name);
     setSection(hit.section);
+    setFrozen(hit.section === 'frozen');
     const d = new Date();
     d.setDate(d.getDate() + hit.defaultDaysToExpire);
     setExpiresAt(d.toISOString().slice(0, 10));
@@ -124,9 +130,11 @@ export function PantryTab({
       section,
       quantity,
       expiresAt,
+      frozen,
     });
     setName('');
     setQuantity('');
+    setFrozen(false);
     setShowSuggestions(false);
   }
 
@@ -327,7 +335,11 @@ export function PantryTab({
             <span className="field__label">Section</span>
             <select
               value={section}
-              onChange={(e) => setSection(e.target.value as PantrySection)}
+              onChange={(e) => {
+                const next = e.target.value as PantrySection;
+                setSection(next);
+                setFrozen(next === 'frozen');
+              }}
             >
               {SECTIONS.map((s) => (
                 <option key={s.id} value={s.id}>
@@ -358,6 +370,19 @@ export function PantryTab({
             Add to pantry
           </button>
         </div>
+        <label className="toggle pantry-frozen-toggle">
+          <input
+            type="checkbox"
+            checked={frozen}
+            onChange={(e) => {
+              const next = e.target.checked;
+              setFrozen(next);
+              if (next) setSection('frozen');
+              else if (section === 'frozen') setSection('refrigerated');
+            }}
+          />
+          <span>Frozen — Cook will add thaw or cook-from-frozen time</span>
+        </label>
       </form>
 
       <div className="pantry-sections">
@@ -369,7 +394,12 @@ export function PantryTab({
               <h3>{label}</h3>
               <ul className="item-list">
                 {sectionItems.map((item) => (
-                  <PantryRow key={item.id} item={item} onRemove={onRemove} />
+                  <PantryRow
+                    key={item.id}
+                    item={item}
+                    onRemove={onRemove}
+                    onUpdate={onUpdate}
+                  />
                 ))}
               </ul>
             </section>
@@ -405,11 +435,25 @@ export function PantryTab({
 function PantryRow({
   item,
   onRemove,
+  onUpdate,
 }: {
   item: PantryItem;
   onRemove: (id: string) => void;
+  onUpdate: (id: string, patch: Partial<PantryItem>) => void;
 }) {
   const status = getExpirationStatus(item.expiresAt);
+  const frozen = isFrozenItem(item);
+
+  function toggleFrozen() {
+    if (frozen) {
+      onUpdate(item.id, {
+        frozen: false,
+        section: item.section === 'frozen' ? 'refrigerated' : item.section,
+      });
+      return;
+    }
+    onUpdate(item.id, { frozen: true, section: 'frozen' });
+  }
 
   return (
     <li className={`item-row item-row--${status}`}>
@@ -418,6 +462,7 @@ function PantryRow({
           <span className="item-row__name">{item.name}</span>
           <span className="item-row__meta">
             {item.quantity}
+            {frozen && <span className="tag tag--frozen">Frozen</span>}
             {item.isStaple && <span className="tag tag--staple">Spice</span>}
             {item.fromPurchaseHistory && <span className="tag">Imported</span>}
             {item.fromMediaScan && <span className="tag">From photo</span>}
@@ -432,13 +477,18 @@ function PantryRow({
           Past expiration — dispose of this item and remove it from your pantry.
         </p>
       )}
-      <button
-        type="button"
-        className={status === 'expired' ? 'btn btn--danger' : 'btn btn--ghost'}
-        onClick={() => onRemove(item.id)}
-      >
-        {status === 'expired' ? 'Dispose & delete' : 'Remove'}
-      </button>
+      <div className="clip-card__actions">
+        <button type="button" className="btn btn--ghost" onClick={toggleFrozen}>
+          {frozen ? 'Unfreeze' : 'Freeze'}
+        </button>
+        <button
+          type="button"
+          className={status === 'expired' ? 'btn btn--danger' : 'btn btn--ghost'}
+          onClick={() => onRemove(item.id)}
+        >
+          {status === 'expired' ? 'Dispose & delete' : 'Remove'}
+        </button>
+      </div>
     </li>
   );
 }

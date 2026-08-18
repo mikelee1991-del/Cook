@@ -63,7 +63,8 @@ assert.match(saves, /BulkUploadZone/, 'bulk upload wired in saves');
 const cook = read('src/components/CookTab.tsx');
 assert.match(cook, /type="range"/, 'cook filters should use sliders');
 assert.doesNotMatch(cook, /Instant Pot|Air fryer|air-fryer|instant-pot/, 'cook UI should not offer Instant Pot or air fryer');
-assert.match(read('src/lib/cookFilters.ts'), /TIME_SLIDER/, 'time slider constants present');
+assert.match(read('src/lib/frozenHandling.ts'), /cook-from-frozen/, 'frozen cook timing');
+assert.match(read('src/components/PantryTab.tsx'), /Unfreeze|Freeze/, 'pantry freeze toggle');
 
 assert.match(read('src/lib/scanImages.ts'), /prepareImageForOcr/, 'OCR preprocess wired');
 assert.match(read('src/lib/ocrPreprocess.ts'), /grayscaleContrast/, 'contrast stretch for recipe photos');
