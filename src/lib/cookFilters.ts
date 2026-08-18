@@ -1,0 +1,68 @@
+import type {
+  CookFilters,
+  CookingApparatus,
+  EaseLevel,
+  FlavorProfile,
+  Recipe,
+} from '../types';
+
+export const TIME_SLIDER_MIN = 15;
+export const TIME_SLIDER_MAX = 90;
+export const TIME_SLIDER_STEP = 5;
+
+export const EASE_RANK: Record<EaseLevel, number> = {
+  easy: 0,
+  moderate: 1,
+  involved: 2,
+};
+
+export const EASE_SLIDER_MAX = 2;
+
+export const EASE_SLIDER_LABELS = ['Easy', 'Moderate', 'Involved'] as const;
+
+export const AVAILABLE_APPARATUS: { id: CookingApparatus; label: string }[] = [
+  { id: 'stove', label: 'Stove' },
+  { id: 'oven', label: 'Oven' },
+  { id: 'sheet-pan', label: 'Sheet pan' },
+  { id: 'grill', label: 'Grill' },
+  { id: 'no-cook', label: 'No cook' },
+];
+
+export const FLAVOR_OPTIONS: { value: FlavorProfile; label: string }[] = [
+  { value: 'light', label: 'Light' },
+  { value: 'heavy', label: 'Heavy' },
+  { value: 'fresh', label: 'Fresh' },
+  { value: 'comfort', label: 'Comfort' },
+  { value: 'spicy', label: 'Spicy' },
+  { value: 'bright', label: 'Bright' },
+  { value: 'savory', label: 'Savory' },
+  { value: 'herbaceous', label: 'Herbaceous' },
+];
+
+export function formatTimeFilter(maxMinutes: number): string {
+  if (maxMinutes >= TIME_SLIDER_MAX) return 'Any time';
+  return `Up to ${maxMinutes} min`;
+}
+
+export function formatEaseFilter(maxEase: number): string {
+  if (maxEase >= EASE_SLIDER_MAX) return 'Any effort';
+  return `Up to ${EASE_SLIDER_LABELS[maxEase]}`;
+}
+
+export function recipePassesCookFilters(
+  recipe: Recipe,
+  hasAllIngredients: boolean,
+  filters: CookFilters,
+): boolean {
+  if (!filters.sources.includes(recipe.source)) return false;
+  if (filters.requireAllIngredients && !hasAllIngredients) return false;
+  if (filters.maxMinutes < TIME_SLIDER_MAX && recipe.minutes > filters.maxMinutes) {
+    return false;
+  }
+  if (EASE_RANK[recipe.ease] > filters.maxEase) return false;
+  if (!recipe.apparatus.some((item) => filters.apparatus.includes(item))) return false;
+  if (filters.flavors.length > 0 && !recipe.flavors.some((f) => filters.flavors.includes(f))) {
+    return false;
+  }
+  return true;
+}

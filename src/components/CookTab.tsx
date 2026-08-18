@@ -1,12 +1,16 @@
-import type { CookFilters, PantryItem, Recipe, RecipeSource } from '../types';
+import type { CookFilters, CookingApparatus, FlavorProfile, PantryItem, Recipe, RecipeSource } from '../types';
+import { SOURCE_OPTIONS, useCookSuggestions } from '../hooks/useCookSuggestions';
 import {
-  APPARATUS_OPTIONS,
-  EASE_OPTIONS,
+  AVAILABLE_APPARATUS,
+  EASE_SLIDER_LABELS,
+  EASE_SLIDER_MAX,
   FLAVOR_OPTIONS,
-  SOURCE_OPTIONS,
-  TIME_OPTIONS,
-  useCookSuggestions,
-} from '../hooks/useCookSuggestions';
+  TIME_SLIDER_MAX,
+  TIME_SLIDER_MIN,
+  TIME_SLIDER_STEP,
+  formatEaseFilter,
+  formatTimeFilter,
+} from '../lib/cookFilters';
 
 interface CookTabProps {
   pantry: PantryItem[];
@@ -14,6 +18,10 @@ interface CookTabProps {
 
 export function CookTab({ pantry }: CookTabProps) {
   const { filters, setFilters, suggestions } = useCookSuggestions(pantry);
+
+  function patch(partial: Partial<CookFilters>) {
+    setFilters((f) => ({ ...f, ...partial }));
+  }
 
   function toggleSource(source: RecipeSource) {
     setFilters((f) => {
@@ -25,8 +33,20 @@ export function CookTab({ pantry }: CookTabProps) {
     });
   }
 
-  function patch(partial: Partial<CookFilters>) {
-    setFilters((f) => ({ ...f, ...partial }));
+  function toggleApparatus(id: CookingApparatus) {
+    setFilters((f) => {
+      const has = f.apparatus.includes(id);
+      const apparatus = has ? f.apparatus.filter((a) => a !== id) : [...f.apparatus, id];
+      return { ...f, apparatus };
+    });
+  }
+
+  function toggleFlavor(flavor: FlavorProfile) {
+    setFilters((f) => {
+      const has = f.flavors.includes(flavor);
+      const flavors = has ? f.flavors.filter((item) => item !== flavor) : [...f.flavors, flavor];
+      return { ...f, flavors };
+    });
   }
 
   return (
@@ -34,8 +54,8 @@ export function CookTab({ pantry }: CookTabProps) {
       <header className="panel-intro">
         <h2>What should you cook?</h2>
         <p>
-          Suggestions ranked by what you already have. NYT Cooking links open on their site;
-          &ldquo;Your NYT saves&rdquo; is a starter set until you share a real saved-recipe list.
+          Suggestions ranked by what you already have. Drag time and effort; tick the gear you
+          actually own. NYT Cooking links open on their site.
         </p>
       </header>
 
@@ -49,69 +69,80 @@ export function CookTab({ pantry }: CookTabProps) {
           <span>Only recipes I have all ingredients for</span>
         </label>
 
-        <div className="filters__row">
-          <label className="field">
-            <span className="field__label">Time</span>
-            <select
-              value={filters.maxMinutes ?? ''}
-              onChange={(e) =>
-                patch({
-                  maxMinutes: e.target.value === '' ? null : Number(e.target.value),
-                })
-              }
-            >
-              {TIME_OPTIONS.map((o) => (
-                <option key={String(o.value)} value={o.value ?? ''}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
+        <div className="slider-grid">
+          <label className="slider-field">
+            <span className="slider-field__top">
+              <span className="field__label">Time</span>
+              <span className="slider-field__value">{formatTimeFilter(filters.maxMinutes)}</span>
+            </span>
+            <input
+              type="range"
+              min={TIME_SLIDER_MIN}
+              max={TIME_SLIDER_MAX}
+              step={TIME_SLIDER_STEP}
+              value={filters.maxMinutes}
+              aria-valuetext={formatTimeFilter(filters.maxMinutes)}
+              onChange={(e) => patch({ maxMinutes: Number(e.target.value) })}
+            />
+            <span className="slider-field__ticks" aria-hidden="true">
+              <span>{TIME_SLIDER_MIN} min</span>
+              <span>Any</span>
+            </span>
           </label>
 
-          <label className="field">
-            <span className="field__label">Ease</span>
-            <select
-              value={filters.ease}
-              onChange={(e) => patch({ ease: e.target.value as CookFilters['ease'] })}
-            >
-              {EASE_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
+          <label className="slider-field">
+            <span className="slider-field__top">
+              <span className="field__label">Effort</span>
+              <span className="slider-field__value">{formatEaseFilter(filters.maxEase)}</span>
+            </span>
+            <input
+              type="range"
+              min={0}
+              max={EASE_SLIDER_MAX}
+              step={1}
+              value={filters.maxEase}
+              aria-valuetext={formatEaseFilter(filters.maxEase)}
+              onChange={(e) => patch({ maxEase: Number(e.target.value) })}
+            />
+            <span className="slider-field__ticks" aria-hidden="true">
+              {EASE_SLIDER_LABELS.map((label) => (
+                <span key={label}>{label}</span>
               ))}
-            </select>
-          </label>
-
-          <label className="field">
-            <span className="field__label">Apparatus</span>
-            <select
-              value={filters.apparatus}
-              onChange={(e) =>
-                patch({ apparatus: e.target.value as CookFilters['apparatus'] })
-              }
-            >
-              {APPARATUS_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="field">
-            <span className="field__label">Flavor</span>
-            <select
-              value={filters.flavor}
-              onChange={(e) => patch({ flavor: e.target.value as CookFilters['flavor'] })}
-            >
-              {FLAVOR_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
+            </span>
           </label>
         </div>
+
+        <fieldset className="source-fieldset">
+          <legend>What you can cook with</legend>
+          <div className="source-chips">
+            {AVAILABLE_APPARATUS.map((o) => (
+              <label key={o.id} className="chip">
+                <input
+                  type="checkbox"
+                  checked={filters.apparatus.includes(o.id)}
+                  onChange={() => toggleApparatus(o.id)}
+                />
+                <span>{o.label}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+
+        <fieldset className="source-fieldset">
+          <legend>Flavor</legend>
+          <div className="source-chips">
+            {FLAVOR_OPTIONS.map((o) => (
+              <label key={o.value} className="chip">
+                <input
+                  type="checkbox"
+                  checked={filters.flavors.includes(o.value)}
+                  onChange={() => toggleFlavor(o.value)}
+                />
+                <span>{o.label}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
 
         <fieldset className="source-fieldset">
           <legend>Sources</legend>
@@ -142,7 +173,8 @@ export function CookTab({ pantry }: CookTabProps) {
 
       {suggestions.length === 0 && (
         <p className="empty-state">
-          Nothing matches these filters. Loosen time, ease, or ingredient requirements.
+          Nothing matches these filters. Give the time or effort sliders more room, or tick more
+          gear.
         </p>
       )}
     </div>
