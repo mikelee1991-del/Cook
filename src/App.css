@@ -160,6 +160,35 @@
   font-size: 0.9rem;
 }
 
+.footer__tools {
+  margin: 1rem 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 0.75rem;
+}
+
+.footer__reset {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 650;
+  color: var(--danger);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+  cursor: pointer;
+}
+
+.footer__reset:hover {
+  color: #6b1f1f;
+}
+
+.footer__reset-note {
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+}
+
 .tab-panel {
   background: rgba(255, 255, 255, 0.55);
   border: 1px solid var(--line);

@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  RECOMMENDED_DISMISSED_KEY,
+  RECOMMENDED_MANUAL_KEY,
+} from '../lib/appStorage';
 import { recommendFromStock } from '../lib/recommendIngredients';
 import { normalizeName, pantryHasIngredient, uid } from '../lib/pantryUtils';
 import type { PantryItem, RecommendedIngredient } from '../types';
-
-const MANUAL_KEY = 'dinner-recommended-manual-v1';
-const DISMISSED_KEY = 'dinner-recommended-dismissed-v1';
 
 function loadJson<T>(key: string, fallback: T): T {
   try {
@@ -23,16 +24,18 @@ function hasName(items: RecommendedIngredient[], name: string, exceptId?: string
 
 export function useRecommendedIngredients(pantry: PantryItem[]) {
   const [manual, setManual] = useState<RecommendedIngredient[]>(() =>
-    loadJson(MANUAL_KEY, []),
+    loadJson(RECOMMENDED_MANUAL_KEY, []),
   );
-  const [dismissed, setDismissed] = useState<string[]>(() => loadJson(DISMISSED_KEY, []));
+  const [dismissed, setDismissed] = useState<string[]>(() =>
+    loadJson(RECOMMENDED_DISMISSED_KEY, []),
+  );
 
   useEffect(() => {
-    localStorage.setItem(MANUAL_KEY, JSON.stringify(manual));
+    localStorage.setItem(RECOMMENDED_MANUAL_KEY, JSON.stringify(manual));
   }, [manual]);
 
   useEffect(() => {
-    localStorage.setItem(DISMISSED_KEY, JSON.stringify(dismissed));
+    localStorage.setItem(RECOMMENDED_DISMISSED_KEY, JSON.stringify(dismissed));
   }, [dismissed]);
 
   const auto = useMemo(() => {

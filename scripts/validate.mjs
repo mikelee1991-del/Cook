@@ -42,6 +42,8 @@ const app = read('src/App.tsx');
 assert.match(app, /brand">Dinner</, 'hero brand should be Dinner');
 assert.doesNotMatch(app, /Supper/, 'Supper branding should be gone');
 assert.match(app, /Pantry|Cook|Saves/, 'primary tabs present');
+assert.match(app, /Hard reset/, 'footer hard reset control');
+assert.match(read('src/lib/appStorage.ts'), /APP_STORAGE_KEYS/, 'central app storage keys');
 
 const pantry = read('src/components/PantryTab.tsx');
 assert.match(pantry, /Scan shelves/, 'pantry scan section label');

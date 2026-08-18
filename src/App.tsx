@@ -7,6 +7,7 @@ import { usePantryMedia } from './hooks/usePantryMedia';
 import { usePhotoScans } from './hooks/usePhotoScans';
 import { useRecommendedIngredients } from './hooks/useRecommendedIngredients';
 import { useSavedRecipes } from './hooks/useSavedRecipes';
+import { hardResetApp } from './lib/appStorage';
 import { pantryDraftFromName } from './lib/pantryDraft';
 import type { RecommendedIngredient } from './types';
 import './App.css';
@@ -156,6 +157,14 @@ export default function App() {
         <p>
           Data stays in this browser. Recipe page scans sort recipes vs other text automatically —
           keep or discard each clip.
+        </p>
+        <p className="footer__tools">
+          <button type="button" className="footer__reset" onClick={hardResetApp}>
+            Hard reset
+          </button>
+          <span className="footer__reset-note">
+            Clears pantry, saves, scans, and shelf photos in this browser.
+          </span>
         </p>
       </footer>
     </div>
