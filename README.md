@@ -2,6 +2,10 @@
 
 Interactive dinner planner (Vite + React).
 
+**Always-on app:** [https://mikelee1991-del.github.io/Cook/](https://mikelee1991-del.github.io/Cook/)
+
+Data stays in the browser on that origin (it does not sync from a preview tunnel).
+
 ## Commands
 
 ```bash
