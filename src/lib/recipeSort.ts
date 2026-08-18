@@ -11,7 +11,7 @@ export interface SortedClip {
 }
 
 const RECIPE_HINTS =
-  /\b(ingredients?|directions?|instructions?|method|preparation|preheat|bake|roast|simmer|whisk|tablespoons?|teaspoons?|cups?|serves?|servings?|minutes?|oven|°[cf]|degrees)\b/i;
+  /\b(ingredients?|directions?|instructions?|method|preparation|preheat|bake|roast|simmer|whisk|tablespoons?|teaspoons?|tbsp|tsp|cups?|serves?|servings?|minutes?|oven|°[cf]|degrees)\b/i;
 
 const MEASURE =
   /\b(\d+\/\d+|\d+(\.\d+)?)\s?(cups?|tbsp|tsp|tablespoons?|teaspoons?|oz|ounces?|lb|lbs|pounds?|g|kg|ml|l|cloves?|cans?|sticks?)\b/i;
@@ -59,7 +59,7 @@ export function sortPageText(ocrText: string, sourceImageIndex: number): SortedC
   const cleaned = ocrText.replace(/\r/g, '').trim();
   if (!cleaned) return [];
 
-  const rawBlocks = splitIntoBlocks(cleaned);
+  const rawBlocks = coalesceRecipeFragments(splitIntoBlocks(cleaned));
   const clips: SortedClip[] = [];
 
   rawBlocks.forEach((block, i) => {
@@ -127,6 +127,29 @@ function splitIntoBlocks(text: string): string[] {
   }
 
   return blocks;
+}
+
+function isRecipeFragment(block: string): boolean {
+  const t = block.trim();
+  if (!t) return false;
+  if (MEASURE.test(t) || STEP_LINE.test(t)) return true;
+  if (/^(ingredients?|directions?|instructions?|method|notes?|serves?)\b/i.test(t)) return true;
+  return RECIPE_HINTS.test(t) && t.length < 90;
+}
+
+/** Tesseract often emits each ingredient as its own blank-line block. Glue those back. */
+function coalesceRecipeFragments(blocks: string[]): string[] {
+  const out: string[] = [];
+  for (const block of blocks) {
+    const prev = out[out.length - 1];
+    const prevShort = Boolean(prev && prev.length < 1800 && prev.split('\n').length < 40);
+    if (prev && prevShort && isRecipeFragment(block)) {
+      out[out.length - 1] = `${prev}\n${block}`;
+    } else {
+      out.push(block);
+    }
+  }
+  return out;
 }
 
 function splitByTitleLines(text: string): string[] {

@@ -13,8 +13,9 @@ interface SavesTabProps {
   onAddLink: (input: { title: string; url: string; notes: string }) => void;
   onRemove: (id: string) => void;
   onAddImages: (id: string, images: string[]) => void;
-  onRunScan: (images: string[]) => Promise<string | null>;
+  onRunScan: (images: string[], ocrSources?: Array<string | Blob>) => Promise<string | null>;
   onRemoveScan: (id: string) => void;
+  onRescan: (id: string) => Promise<string | null>;
   onRemoveClip: (scanId: string, clipId: string) => void;
   onSetClipKind: (scanId: string, clipId: string, kind: SortedClip['kind']) => void;
 }
@@ -29,6 +30,7 @@ export function SavesTab({
   onAddImages,
   onRunScan,
   onRemoveScan,
+  onRescan,
   onRemoveClip,
   onSetClipKind,
 }: SavesTabProps) {
@@ -37,6 +39,7 @@ export function SavesTab({
   const [notes, setNotes] = useState('');
   const [url, setUrl] = useState('');
   const [pendingImages, setPendingImages] = useState<string[]>([]);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
   const [busyLabel, setBusyLabel] = useState('Working…');
   const [formError, setFormError] = useState<string | null>(null);
@@ -52,13 +55,15 @@ export function SavesTab({
     setFormError(null);
     setBusyLabel(`Preparing ${files.length} photo${files.length === 1 ? '' : 's'}…`);
     try {
-      const compressed = await compressImageFiles(files, (done, total) => {
+      const imageFiles = files.filter((f) => f.type.startsWith('image/'));
+      const compressed = await compressImageFiles(imageFiles, (done, total) => {
         setBusyLabel(`Compressing ${done} of ${total}…`);
       });
       if (!compressed.length) {
         setFormError('Choose image files (JPG, PNG, etc.).');
         return;
       }
+      setPendingFiles((prev) => [...prev, ...imageFiles]);
       setPendingImages((prev) => [...prev, ...compressed]);
     } catch {
       setFormError('Could not read one or more images. Try a different format.');
@@ -88,12 +93,14 @@ export function SavesTab({
       return;
     }
     const images = [...pendingImages];
+    const files = [...pendingFiles];
     setPendingImages([]);
+    setPendingFiles([]);
     setFormError(null);
     setBusy(true);
     setBusyLabel(`Scanning ${images.length} photo${images.length === 1 ? '' : 's'}…`);
     try {
-      await onRunScan(images);
+      await onRunScan(images, files);
     } finally {
       setBusy(false);
       setBusyLabel('Working…');
@@ -115,6 +122,7 @@ export function SavesTab({
 
   function removePending(index: number) {
     setPendingImages((prev) => prev.filter((_, i) => i !== index));
+    setPendingFiles((prev) => prev.filter((_, i) => i !== index));
   }
 
   function keepRecipeClip(scan: PhotoScan, clip: SortedClip) {
@@ -186,8 +194,8 @@ export function SavesTab({
         <form className="add-form" onSubmit={handleScanSubmit}>
           <h3>Scan pages in bulk</h3>
           <p className="add-form__hint">
-            Select dozens of photos, drag a folder, or drop files here. Every page is scanned and
-            sorted. One photo can still hold multiple recipes mixed with other text.
+            Select dozens of photos, drag a folder, or drop files here. Pages are read at full
+            photo detail (not the compressed preview), then sorted into recipes vs other text.
           </p>
           <BulkUploadZone
             accept="image/*"
@@ -227,7 +235,10 @@ export function SavesTab({
                   type="button"
                   className="btn btn--ghost"
                   disabled={busy}
-                  onClick={() => setPendingImages([])}
+                  onClick={() => {
+                    setPendingImages([]);
+                    setPendingFiles([]);
+                  }}
                 >
                   Clear queue
                 </button>
@@ -303,14 +314,35 @@ export function SavesTab({
                     )}
                     {scan.error && <p className="expiry-banner__expired">{scan.error}</p>}
                   </div>
-                  <button
-                    type="button"
-                    className="btn btn--ghost"
-                    onClick={() => onRemoveScan(scan.id)}
-                    disabled={scan.status === 'scanning'}
-                  >
-                    Dismiss
-                  </button>
+                  <div className="clip-card__actions">
+                    {scan.status !== 'scanning' && (
+                      <button
+                        type="button"
+                        className="btn btn--ghost"
+                        disabled={busy}
+                        onClick={async () => {
+                          setBusy(true);
+                          setBusyLabel('Scanning again…');
+                          try {
+                            await onRescan(scan.id);
+                          } finally {
+                            setBusy(false);
+                            setBusyLabel('Working…');
+                          }
+                        }}
+                      >
+                        Scan again
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="btn btn--ghost"
+                      onClick={() => onRemoveScan(scan.id)}
+                      disabled={scan.status === 'scanning'}
+                    >
+                      Dismiss
+                    </button>
+                  </div>
                 </div>
 
                 <ul className="save-gallery">

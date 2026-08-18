@@ -89,31 +89,14 @@ export function usePhotoScans() {
     [],
   );
 
-  const runScan = useCallback(async (images: string[]) => {
-    if (!images.length) return null;
-    const id = uid('scan');
-    const createdAt = new Date().toISOString();
-    const draft: PhotoScan = {
-      id,
-      images,
-      status: 'scanning',
-      clips: [],
-      progress: 'Starting…',
-      createdAt,
-    };
-    setScans((prev) => [draft, ...prev]);
-
+  const runOcr = useCallback(async (id: string, sources: Array<string | Blob>) => {
     try {
-      const clips = await scanImagesForRecipes(images, (progress) => {
-        setScans((prev) =>
-          prev.map((s) => (s.id === id ? { ...s, progress } : s)),
-        );
+      const clips = await scanImagesForRecipes(sources, (progress) => {
+        setScans((prev) => prev.map((s) => (s.id === id ? { ...s, progress } : s)));
       });
       setScans((prev) =>
         prev.map((s) =>
-          s.id === id
-            ? { ...s, status: 'done', clips, progress: 'Done' }
-            : s,
+          s.id === id ? { ...s, status: 'done', clips, error: undefined, progress: 'Done' } : s,
         ),
       );
       return id;
@@ -122,19 +105,53 @@ export function usePhotoScans() {
         err instanceof Error ? err.message : 'Could not read text from these photos.';
       setScans((prev) =>
         prev.map((s) =>
-          s.id === id
-            ? { ...s, status: 'error', error: message, progress: 'Failed' }
-            : s,
+          s.id === id ? { ...s, status: 'error', error: message, progress: 'Failed' } : s,
         ),
       );
       return id;
     }
   }, []);
 
+  const runScan = useCallback(
+    async (displayImages: string[], ocrSources?: Array<string | Blob>) => {
+      if (!displayImages.length) return null;
+      const id = uid('scan');
+      const createdAt = new Date().toISOString();
+      const draft: PhotoScan = {
+        id,
+        images: displayImages,
+        status: 'scanning',
+        clips: [],
+        progress: 'Starting…',
+        createdAt,
+      };
+      setScans((prev) => [draft, ...prev]);
+      return runOcr(id, ocrSources?.length ? ocrSources : displayImages);
+    },
+    [runOcr],
+  );
+
+  const rescan = useCallback(
+    async (id: string) => {
+      const scan = scans.find((s) => s.id === id);
+      if (!scan?.images.length) return null;
+      setScans((prev) =>
+        prev.map((s) =>
+          s.id === id
+            ? { ...s, status: 'scanning', clips: [], error: undefined, progress: 'Starting…' }
+            : s,
+        ),
+      );
+      return runOcr(id, scan.images);
+    },
+    [runOcr, scans],
+  );
+
   return {
     scans,
     error,
     runScan,
+    rescan,
     removeScan,
     removeClip,
     setClipKind,
