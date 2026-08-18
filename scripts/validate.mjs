@@ -32,6 +32,7 @@ assert.ok(fs.existsSync('dist/index.html'), 'dist/index.html missing');
 const html = read('dist/index.html');
 assert.match(html, /id="root"/, 'root mount missing');
 assert.match(html, /Dinner/, 'brand title missing from index.html');
+assert.match(html, /\.\/assets\//, 'production assets should use relative paths for GitHub Pages');
 
 const assets = fs.readdirSync('dist/assets');
 assert.ok(assets.some((f) => f.endsWith('.js')), 'no JS bundle');
