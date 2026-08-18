@@ -23,6 +23,7 @@ function read(rel) {
 
 run('lint', 'npm', ['run', 'lint']);
 run('recommend tests', 'npm', ['run', 'test:recommend']);
+run('cook tests', 'npm', ['run', 'test:cook']);
 run('build', 'npm', ['run', 'build']);
 
 console.log('\n→ smoke dist');
@@ -55,8 +56,13 @@ const saves = read('src/components/SavesTab.tsx');
 assert.match(saves, /Scan pages in bulk|Scan & sort/, 'saves scan path present');
 assert.match(saves, /BulkUploadZone/, 'bulk upload wired in saves');
 
+const cook = read('src/components/CookTab.tsx');
+assert.match(cook, /type="range"/, 'cook filters should use sliders');
+assert.doesNotMatch(cook, /Instant Pot|Air fryer|air-fryer|instant-pot/, 'cook UI should not offer Instant Pot or air fryer');
+assert.match(read('src/lib/cookFilters.ts'), /TIME_SLIDER/, 'time slider constants present');
+
 const pkg = JSON.parse(read('package.json'));
-for (const script of ['dev', 'build', 'lint', 'preview', 'validate', 'test:recommend']) {
+for (const script of ['dev', 'build', 'lint', 'preview', 'validate', 'test:recommend', 'test:cook']) {
   assert.ok(pkg.scripts?.[script], `package.json missing script: ${script}`);
 }
 

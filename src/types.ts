@@ -13,8 +13,6 @@ export type CookingApparatus =
   | 'oven'
   | 'stove'
   | 'grill'
-  | 'instant-pot'
-  | 'air-fryer'
   | 'no-cook'
   | 'sheet-pan';
 
@@ -71,10 +69,10 @@ export interface Recipe {
 
 export interface CookFilters {
   requireAllIngredients: boolean;
-  maxMinutes: number | null;
-  ease: EaseLevel | 'any';
-  apparatus: CookingApparatus | 'any';
-  flavor: FlavorProfile | 'any';
+  maxMinutes: number;
+  maxEase: number;
+  apparatus: CookingApparatus[];
+  flavors: FlavorProfile[];
   sources: RecipeSource[];
 }
 
