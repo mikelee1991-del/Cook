@@ -67,7 +67,7 @@ assert.doesNotMatch(cook, /Instant Pot|Air fryer|air-fryer|instant-pot/, 'cook U
 assert.match(read('src/lib/frozenHandling.ts'), /cook-from-frozen/, 'frozen cook timing');
 assert.match(read('src/components/PantryTab.tsx'), /Unfreeze|Freeze/, 'pantry freeze toggle');
 
-assert.match(read('src/lib/scanImages.ts'), /prepareOcrPage/, 'OCR preprocess wired');
+assert.match(read('src/lib/ocrPreprocess.ts'), /prepareOcrPage/, 'OCR preprocess wired');
 assert.match(read('src/hooks/useDinnerSync.ts'), /mergeSnapshots/, 'cross-device snapshot merge');
 assert.match(read('src/components/DevicesPanel.tsx'), /Copy device link/, 'device share link');
 assert.match(read('src/lib/dinnerSyncApi.ts'), /ntfy\.sh/, 'default cross-device mailbox');
@@ -76,6 +76,9 @@ assert.match(read('src/lib/ocrPreprocess.ts'), /grayscaleContrast/, 'contrast st
 assert.match(read('src/lib/ocrPreprocess.ts'), /adaptiveBinarize/, 'handwriting / uneven-light binarize');
 assert.match(read('src/lib/scanImages.ts'), /SPARSE_TEXT/, 'handwriting page segmentation');
 assert.match(read('src/lib/ocrText.ts'), /pageDensityFromInk/, 'sparse vs print layout');
+assert.match(read('src/lib/ocrPreprocess.ts'), /sliceRecipeLayout/, 'two-column / band layout split');
+assert.match(read('src/lib/scanImages.ts'), /rotation/, 'sideways page rotation retry');
+assert.match(read('src/lib/ocrText.ts'), /dropLeadingOrphanCopy/, 'drop leftover previous-recipe copy');
 assert.match(read('src/lib/recipeFormat.ts'), /formatReadableRecipe/, 'human-readable recipe formatter');
 assert.match(read('src/lib/recipeSort.ts'), /formatRecipeClipBody/, 'sorted clips get readable bodies');
 assert.match(read('src/components/SavesTab.tsx'), /recipe__notes/, 'saved recipe notes preserve line breaks');

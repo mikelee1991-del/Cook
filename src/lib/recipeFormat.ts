@@ -8,20 +8,29 @@ const SECTION_ING =
 const SECTION_DIR =
   /^(directions?|directlons|instructions?|instructlons|method|preparation|steps?)\b[:\s.-]*$/i;
 const SECTION_NOTES = /^(notes?|tips?|yield)\b[:\s.-]*$/i;
-const SECTION_SERVES = /^(serves?|servings?)\b[:\s.-]*\d/i;
+const SECTION_SERVES = /^(serves?|servings?|makes)\b[:\s.-]*\d/i;
 const SECTION_ANY =
   /^(ingredients?|ingredlents|lngredients|1ngredients|directions?|directlons|instructions?|instructlons|method|preparation|steps?|notes?|tips?|yield)\b[:\s.-]*$/i;
 
-const MEASURE =
-  /\b(\d+\/\d+|\d+(\.\d+)?)\s?(cups?|c\.|c|tbsp|tsp|tablespoons?|teaspoons?|oz|ounces?|lb|lbs|pounds?|g|kg|ml|l|cloves?|cans?|sticks?|pinch(?:es)?|dash(?:es)?)\b/i;
+const UNIT =
+  '(?:cups?|c\\.|c|tbsp|tbs\\.?|tsp\\.?|tablespoons?|teaspoons?|oz|ounces?|lb|lbs\\.?|pounds?|g|kg|ml|l|cloves?|cans?|sticks?|gallon|gal|packages?|pkg|bottle|pinch(?:es)?|dash(?:es)?|bunch(?:es)?)';
 
-const QUANTITY_START =
-  /^\s*(\d+([/.]\d+)?|\d+\s+\d+\/\d+|[¼½¾⅓⅔⅛]|(?:one|two|three|a)\s+(?:\d+\/\d+\s+)?(?:cups?|c\.|tbsp|tsp|oz|lb|lbs|cloves?|cans?|sticks?|pinch|dash))\b/i;
+const MEASURE = new RegExp(`\\b(\\d+\\/\\d+|\\d+(\\.\\d+)?)\\s?${UNIT}\\b`, 'i');
+
+const QUANTITY_START = new RegExp(
+  `^\\s*(\\d+([/.]\\d+)?|\\d+\\s+\\d+\\/\\d+|[¼½¾⅓⅔⅛]|(?:one|two|three|a)\\s+(?:\\d+\\/\\d+\\s+)?${UNIT})\\b`,
+  'i',
+);
 
 const STEP_PREFIX = /^\s*(\d+[).]|[lI][).]|step\s*\d+|•|-|\*)\s+/i;
+const STEP_ONLY = /^\s*(step\s*\d+)\s*$/i;
 
 const ACTION_VERB =
-  /^(preheat|prebeat|mix|whisk|stir|bake|roast|simmer|boil|heat|cook|combine|add|pour|place|season|serve|toss|fold|chop|slice|dice|mince|drain|bring|reduce|cover|uncover|transfer|remove|let|set|spread|brush|grill|saute|sauté|fry|broil|blend|process|marinate|rest|cool|chill|refrigerate|freeze|thaw|garnish|top|repeat|continue|meanwhile|while)\b/i;
+  /^(preheat|prebeat|mix|whisk|stir|bake|roast|simmer|boil|heat|cook|combine|add|pour|place|season|serve|toss|fold|chop|slice|dice|mince|drain|bring|reduce|cover|uncover|transfer|remove|let|set|spread|bring|submerge|butter|sprinkle|scoop|cream|beat|sift|grease|strain|ladle|scrape|trim|reconstitute|whisk|saute|sauté|fry|broil|blend|process|marinate|rest|cool|chill|refrigerate|freeze|thaw|garnish|top|repeat|continue|meanwhile|while|quarter|cut|wearing)\b/i;
+
+const YIELD_LINE = /^(yield|makes|serves?|servings?)\b[:\s].+/i;
+const SUBHEAD =
+  /^(dipping sauce|coating|frosting|marinade|sauce|garnish|filling|for the\b).*$/i;
 
 export interface ReadableRecipe {
   title: string;
@@ -61,14 +70,14 @@ function matchSectionStart(
     return null;
   }
   const m = t.match(
-    /^(ingredients?|ingredlents|lngredients|1ngredients|directions?|directlons|instructions?|instructlons|method|preparation|steps?|notes?|tips?|serves?|yield|servings?)\b[:\s.-]*(.*)$/i,
+    /^(ingredients?|ingredlents|lngredients|1ngredients|directions?|directlons|instructions?|instructlons|method|preparation|steps?|notes?|tips?|serves?|yield|servings?|makes)\b[:\s.-]*(.*)$/i,
   );
   if (!m) return null;
   const label = m[1].toLowerCase();
   const rest = (m[2] || '').trim();
   let section: 'ingredients' | 'directions' | 'notes';
   if (/^ingred|^1ngred/i.test(label)) section = 'ingredients';
-  else if (/^(notes?|tips?|serves?|yield|servings?)$/i.test(label)) section = 'notes';
+  else if (/^(notes?|tips?|serves?|yield|servings?|makes)$/i.test(label)) section = 'notes';
   else section = 'directions';
   if (section === 'notes' && /^(serves?|servings?)$/i.test(label) && rest && !/^\d/.test(rest)) {
     return null;
@@ -81,15 +90,18 @@ function matchSectionStart(
 
 function looksLikeIngredient(line: string): boolean {
   const t = stripStepPrefix(normalizeLine(line));
-  if (!t || SECTION_ANY.test(t)) return false;
+  if (!t || SECTION_ANY.test(t) || STEP_ONLY.test(t)) return false;
+  if (YIELD_LINE.test(t) || SUBHEAD.test(t)) return false;
   if (ACTION_VERB.test(t) && t.length > 28) return false;
   if (MEASURE.test(t) || QUANTITY_START.test(t)) return true;
+  if (/\b(optional)\b/i.test(t) && t.split(/\s+/).length <= 14) return true;
+  if (/^(salt and pepper|salt|pepper|brandy|bourbon|olive oil)\b/i.test(t)) return true;
   // Bare produce / pantry names on their own line (common in handwritten cards)
   if (
     /^[A-Za-z][A-Za-z .,'()-]{1,40}$/.test(t) &&
     t.split(/\s+/).length <= 5 &&
     !/[.!?]$/.test(t) &&
-    !/^[A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,4}$/.test(t) // reject Title Case recipe titles
+    !/^[A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,4}$/.test(t)
   ) {
     return true;
   }
@@ -99,7 +111,7 @@ function looksLikeIngredient(line: string): boolean {
 function looksLikeDirection(line: string): boolean {
   const t = stripStepPrefix(normalizeLine(line));
   if (!t || SECTION_ANY.test(t)) return false;
-  if (STEP_PREFIX.test(line)) return true;
+  if (STEP_PREFIX.test(line) || STEP_ONLY.test(line)) return true;
   if (ACTION_VERB.test(t)) return true;
   if (t.length > 55 && /[.!?]$/.test(t)) return true;
   if (/\b(minutes?|mins?|seconds?|until|oven|degrees?|°)\b/i.test(t) && t.split(/\s+/).length >= 4) {
@@ -125,10 +137,21 @@ function shouldJoinContinuation(prev: string, next: string): boolean {
   const b = normalizeLine(next);
   if (!a || !b) return false;
   if (SECTION_ANY.test(b) || STEP_PREFIX.test(next) || QUANTITY_START.test(b)) return false;
+  if (STEP_ONLY.test(a) && !QUANTITY_START.test(b)) return true;
   if (/^[lI1]\s?(tsp|tbsp|cups?|oz|lb)\b/i.test(b)) return false;
   if (MEASURE.test(b) && QUANTITY_START.test(b)) return false;
   if (ACTION_VERB.test(b)) return false;
   if (/[,;:&]$/.test(a)) return true;
+  // Quantity sitting alone ("1 gallon") then the ingredient name.
+  if (
+    /^(?:\d+([/.]\d+)?|\d+\s+\d+\/\d+)\s+(?:gallon|gal|cups?|tbsp|tsp|tablespoons?|teaspoons?|oz|lb|lbs|cloves?|cans?|packages?|bottle|sticks?)s?\.?$/i.test(
+      a,
+    ) &&
+    !QUANTITY_START.test(b) &&
+    b.length < 80
+  ) {
+    return true;
+  }
   // Broken OCR measure line: "2 cups" + "flour"
   if (
     a.split(/\s+/).length <= 3 &&
@@ -204,6 +227,10 @@ function partitionLines(lines: string[]): {
 
   for (const line of lines) {
     const sectionStart = matchSectionStart(line);
+    if (YIELD_LINE.test(normalizeLine(line)) || /^\d+\s+servings?\b/i.test(normalizeLine(line))) {
+      notes.push(normalizeLine(line));
+      continue;
+    }
     if (sectionStart) {
       bucket = sectionStart.section;
       sawSection = true;
@@ -277,7 +304,7 @@ function splitCrowdedIngredients(line: string): string[] {
   const t = stripStepPrefix(normalizeLine(line));
   if (!t) return [];
   const parts = t.split(
-    /\s+(?=\d+(?:[/.]\d+)?\s?(?:cups?|c\.|tbsp|tsp|oz|ounces?|lb|lbs|g|kg|ml)\b)/i,
+    new RegExp(`\\s+(?=\\d+(?:[/.]\\d+)?\\s?${UNIT}\\b)`, 'i'),
   );
   return parts.map((part) => normalizeLine(part)).filter(Boolean);
 }

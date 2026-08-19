@@ -71,6 +71,24 @@ export async function rasterizeToCanvas(src: string | Blob): Promise<HTMLCanvasE
   }
 }
 
+/** Clockwise rotation for pages photographed sideways. */
+export function rotateCanvas(source: HTMLCanvasElement, degrees: 90 | 180 | 270): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  if (degrees === 90 || degrees === 270) {
+    canvas.width = source.height;
+    canvas.height = source.width;
+  } else {
+    canvas.width = source.width;
+    canvas.height = source.height;
+  }
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return source;
+  ctx.translate(canvas.width / 2, canvas.height / 2);
+  ctx.rotate((degrees * Math.PI) / 180);
+  ctx.drawImage(source, -source.width / 2, -source.height / 2);
+  return canvas;
+}
+
 export function scaleCanvas(
   source: HTMLCanvasElement,
   maxEdge: number,

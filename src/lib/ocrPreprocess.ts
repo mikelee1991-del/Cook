@@ -1,4 +1,4 @@
-import { rasterizeToCanvas, scaleCanvas } from './imageRaster';
+import { rasterizeToCanvas, rotateCanvas, scaleCanvas } from './imageRaster';
 import {
   findColumnGutter,
   pageDensityFromInk,
@@ -187,6 +187,24 @@ function inkHistogram(canvas: HTMLCanvasElement): number[] {
   return ink;
 }
 
+/** Dark-pixel counts per row — used to find a horizontal Ingredients / Directions split. */
+export function rowInkHistogram(canvas: HTMLCanvasElement): number[] {
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return [];
+  const { data, width, height } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const ink = new Array(height).fill(0);
+  const threshold = 140;
+  const left = Math.round(width * 0.08);
+  const right = Math.round(width * 0.92);
+  for (let y = 0; y < height; y++) {
+    for (let x = left; x < right; x++) {
+      const i = (y * width + x) * 4;
+      if (data[i] < threshold) ink[y] += 1;
+    }
+  }
+  return ink;
+}
+
 function lumaStats(canvas: HTMLCanvasElement): { mean: number; inkRatio: number; peakNorm: number } {
   const ctx = canvas.getContext('2d');
   if (!ctx) return { mean: 128, inkRatio: 0, peakNorm: 0 };
@@ -227,9 +245,7 @@ function cropCanvas(
   return canvas;
 }
 
-function splitIfTwoColumns(canvas: HTMLCanvasElement, density: PageDensity): HTMLCanvasElement[] {
-  if (density === 'sparse') return [canvas];
-  const gutter = findColumnGutter(inkHistogram(canvas));
+function splitAtGutter(canvas: HTMLCanvasElement, gutter: number | null): HTMLCanvasElement[] {
   if (gutter == null) return [canvas];
   const pad = Math.round(canvas.width * 0.015);
   const left = cropCanvas(canvas, 0, 0, Math.max(1, gutter - pad), canvas.height);
@@ -241,6 +257,36 @@ function splitIfTwoColumns(canvas: HTMLCanvasElement, density: PageDensity): HTM
     canvas.height,
   );
   return [left, right];
+}
+
+/**
+ * Printed cards often put ingredients in two columns, or ingredients on the left
+ * and directions on the right. A mid-page horizontal rule (Ingredients vs Directions)
+ * must be split first, or a full-height column cut bisects the steps.
+ */
+export function sliceRecipeLayout(canvas: HTMLCanvasElement, density: PageDensity): HTMLCanvasElement[] {
+  if (density === 'sparse') return [canvas];
+  const rowGutter = findColumnGutter(rowInkHistogram(canvas));
+  if (rowGutter != null) {
+    const padY = Math.max(4, Math.round(canvas.height * 0.01));
+    const top = cropCanvas(canvas, 0, 0, canvas.width, Math.max(1, rowGutter - padY));
+    const bottom = cropCanvas(
+      canvas,
+      0,
+      Math.min(canvas.height - 1, rowGutter + padY),
+      canvas.width,
+      Math.max(1, canvas.height - rowGutter - padY),
+    );
+    return [
+      ...splitAtGutter(top, findColumnGutter(inkHistogram(top))),
+      ...splitAtGutter(bottom, findColumnGutter(inkHistogram(bottom))),
+    ];
+  }
+  return splitAtGutter(canvas, findColumnGutter(inkHistogram(canvas)));
+}
+
+function splitIfTwoColumns(canvas: HTMLCanvasElement, density: PageDensity): HTMLCanvasElement[] {
+  return sliceRecipeLayout(canvas, density);
 }
 
 function fitForOcr(source: HTMLCanvasElement, density: PageDensity): HTMLCanvasElement {
@@ -259,6 +305,10 @@ export async function prepareImageForOcr(src: string | Blob): Promise<HTMLCanvas
 
 export async function prepareOcrPage(src: string | Blob): Promise<OcrPagePrep> {
   const raw = await rasterizeToCanvas(src);
+  return prepareOcrCanvas(raw);
+}
+
+export function prepareOcrCanvas(raw: HTMLCanvasElement): OcrPagePrep {
   const probe = scaleCanvas(raw, 480, 'down');
   grayscaleContrast(probe);
   const stats = lumaStats(probe);
@@ -288,4 +338,8 @@ export async function prepareOcrPage(src: string | Blob): Promise<OcrPagePrep> {
   });
 
   return { density, darkBackground, variants };
+}
+
+export function rotatePreparedSource(raw: HTMLCanvasElement, degrees: 90 | 180 | 270): HTMLCanvasElement {
+  return rotateCanvas(raw, degrees);
 }
