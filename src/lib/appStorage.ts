@@ -5,6 +5,10 @@ export const RECOMMENDED_DISMISSED_KEY = 'dinner-recommended-dismissed-v1';
 export const SAVES_KEY = 'dinner-saves-v1';
 export const PHOTO_SCANS_KEY = 'dinner-photo-scans-v1';
 
+export const HOUSE_KEY = 'dinner-house-v1';
+export const DEVICE_KEY = 'dinner-device-v1';
+export const SYNC_META_KEY = 'dinner-sync-meta-v1';
+
 /** All Dinner data keys in this browser's localStorage. */
 export const APP_STORAGE_KEYS = [
   PANTRY_KEY,
@@ -13,6 +17,9 @@ export const APP_STORAGE_KEYS = [
   RECOMMENDED_DISMISSED_KEY,
   SAVES_KEY,
   PHOTO_SCANS_KEY,
+  HOUSE_KEY,
+  DEVICE_KEY,
+  SYNC_META_KEY,
 ] as const;
 
 export function clearAllAppData(): void {

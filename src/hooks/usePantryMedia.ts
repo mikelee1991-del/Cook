@@ -33,6 +33,7 @@ export function usePantryMedia() {
       ...item,
       id: uid('pantry-media'),
       createdAt: new Date().toISOString(),
+      updatedAt: Date.now(),
     }));
     setMedia((prev) => [...stamped, ...prev]);
     return stamped;
@@ -44,5 +45,9 @@ export function usePantryMedia() {
 
   const clearMedia = useCallback(() => setMedia([]), []);
 
-  return { media, error, addMedia, removeMedia, clearMedia };
+  const replaceAll = useCallback((next: PantryMedia[]) => {
+    setMedia(next);
+  }, []);
+
+  return { media, error, addMedia, removeMedia, clearMedia, replaceAll };
 }

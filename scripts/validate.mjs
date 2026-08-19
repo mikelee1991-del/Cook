@@ -25,6 +25,7 @@ run('lint', 'npm', ['run', 'lint']);
 run('recommend tests', 'npm', ['run', 'test:recommend']);
 run('cook tests', 'npm', ['run', 'test:cook']);
 run('ocr tests', 'npm', ['run', 'test:ocr']);
+run('sync tests', 'npm', ['run', 'test:sync']);
 run('build', 'npm', ['run', 'build']);
 
 console.log('\n→ smoke dist');
@@ -67,6 +68,10 @@ assert.match(read('src/lib/frozenHandling.ts'), /cook-from-frozen/, 'frozen cook
 assert.match(read('src/components/PantryTab.tsx'), /Unfreeze|Freeze/, 'pantry freeze toggle');
 
 assert.match(read('src/lib/scanImages.ts'), /prepareOcrPage/, 'OCR preprocess wired');
+assert.match(read('src/hooks/useDinnerSync.ts'), /mergeSnapshots/, 'cross-device snapshot merge');
+assert.match(read('src/components/DevicesPanel.tsx'), /Copy device link/, 'device share link');
+assert.match(read('src/lib/dinnerSyncApi.ts'), /ntfy\.sh/, 'default cross-device mailbox');
+assert.match(read('sync-worker/worker.js'), /\/house\//, 'optional encrypted household worker');
 assert.match(read('src/lib/ocrPreprocess.ts'), /grayscaleContrast/, 'contrast stretch for recipe photos');
 assert.match(read('src/lib/ocrPreprocess.ts'), /adaptiveBinarize/, 'handwriting / uneven-light binarize');
 assert.match(read('src/lib/scanImages.ts'), /SPARSE_TEXT/, 'handwriting page segmentation');
@@ -88,6 +93,7 @@ for (const script of [
   'test:recommend',
   'test:cook',
   'test:ocr',
+  'test:sync',
 ]) {
   assert.ok(pkg.scripts?.[script], `package.json missing script: ${script}`);
 }

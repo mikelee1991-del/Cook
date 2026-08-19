@@ -15,6 +15,7 @@ export interface PhotoScan {
   error?: string;
   warnings?: string[];
   createdAt: string;
+  updatedAt?: number;
 }
 
 /** Original Files/Blobs for rescan in this session (too large for localStorage). */
@@ -110,6 +111,7 @@ export function usePhotoScans() {
                 error: clips.length ? undefined : warningText[0],
                 warnings: warningText,
                 progress: 'Done',
+                updatedAt: Date.now(),
               }
             : s,
         ),
@@ -137,9 +139,7 @@ export function usePhotoScans() {
         images: displayImages,
         status: 'scanning',
         clips: [],
-                progress: originalSources.has(id)
-                  ? 'Starting…'
-                  : 'Starting from stored preview…',
+        progress: 'Starting…',
         createdAt,
       };
       setScans((prev) => [draft, ...prev]);
@@ -165,6 +165,10 @@ export function usePhotoScans() {
     [runOcr, scans],
   );
 
+  const replaceAll = useCallback((next: PhotoScan[]) => {
+    setScans(next);
+  }, []);
+
   return {
     scans,
     error,
@@ -174,5 +178,6 @@ export function usePhotoScans() {
     removeClip,
     setClipKind,
     updateClip,
+    replaceAll,
   };
 }

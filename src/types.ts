@@ -43,6 +43,8 @@ export interface PantryItem {
   isStaple?: boolean;
   /** In the freezer. Section may also be `frozen`. */
   frozen?: boolean;
+  /** Epoch ms for cross-device last-write-wins. */
+  updatedAt?: number;
 }
 
 export interface CatalogItem {
@@ -92,6 +94,7 @@ export interface SavedRecipe {
   /** One or more recipe photo data URLs (compressed) */
   images: string[];
   createdAt: string;
+  updatedAt?: number;
 }
 
 export type PantryMediaKind = 'image' | 'video';
@@ -102,6 +105,7 @@ export interface PantryMedia {
   src: string;
   name: string;
   createdAt: string;
+  updatedAt?: number;
 }
 
 export interface RecommendedIngredient {
@@ -113,4 +117,5 @@ export interface RecommendedIngredient {
   source: 'auto' | 'manual';
   createdAt: string;
   inPantry?: boolean;
+  updatedAt?: number;
 }

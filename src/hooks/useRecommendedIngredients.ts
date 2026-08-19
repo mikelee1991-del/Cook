@@ -76,6 +76,7 @@ export function useRecommendedIngredients(pantry: PantryItem[]) {
         reason: '',
         source: 'manual',
         createdAt: new Date().toISOString(),
+        updatedAt: Date.now(),
       };
       return [added, ...prev];
     });
@@ -92,7 +93,9 @@ export function useRecommendedIngredients(pantry: PantryItem[]) {
         setManual((prev) => {
           if (hasName(prev, nextName, item.id)) return prev;
           return prev.map((p) =>
-            p.id === item.id ? { ...p, name: nextName, note: nextNote } : p,
+            p.id === item.id
+              ? { ...p, name: nextName, note: nextNote, updatedAt: Date.now() }
+              : p,
           );
         });
         return;
@@ -106,6 +109,7 @@ export function useRecommendedIngredients(pantry: PantryItem[]) {
         reason: item.reason,
         source: 'manual',
         createdAt: new Date().toISOString(),
+        updatedAt: Date.now(),
       };
       setDismissed((prev) => {
         const key = normalizeName(item.name);
@@ -132,12 +136,24 @@ export function useRecommendedIngredients(pantry: PantryItem[]) {
 
   const clearDismissed = useCallback(() => setDismissed([]), []);
 
+  const replaceManual = useCallback((next: RecommendedIngredient[]) => {
+    setManual(next);
+  }, []);
+
+  const replaceDismissed = useCallback((next: string[]) => {
+    setDismissed(next);
+  }, []);
+
   return {
     items,
+    manual,
+    dismissed,
     addManual,
     updateItem,
     removeItem,
     clearDismissed,
+    replaceManual,
+    replaceDismissed,
     dismissedCount: dismissed.length,
   };
 }

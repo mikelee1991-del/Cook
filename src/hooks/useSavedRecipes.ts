@@ -39,6 +39,7 @@ export function useSavedRecipes() {
         kind: 'photos',
         images: input.images,
         createdAt: new Date().toISOString(),
+        updatedAt: Date.now(),
       };
       setRecipes((prev) => [recipe, ...prev]);
       return recipe;
@@ -61,6 +62,7 @@ export function useSavedRecipes() {
       url: normalized,
       images: [],
       createdAt: new Date().toISOString(),
+      updatedAt: Date.now(),
     };
     setRecipes((prev) => [recipe, ...prev]);
     return recipe;
@@ -75,10 +77,14 @@ export function useSavedRecipes() {
     setRecipes((prev) =>
       prev.map((r) =>
         r.id === id && r.kind === 'photos'
-          ? { ...r, images: [...r.images, ...images] }
+          ? { ...r, images: [...r.images, ...images], updatedAt: Date.now() }
           : r,
       ),
     );
+  }, []);
+
+  const replaceAll = useCallback((next: SavedRecipe[]) => {
+    setRecipes(next);
   }, []);
 
   return {
@@ -88,6 +94,7 @@ export function useSavedRecipes() {
     addLinkRecipe,
     removeRecipe,
     addImagesToRecipe,
+    replaceAll,
   };
 }
 
