@@ -142,5 +142,18 @@ export function cleanupOcrText(raw: string): string {
   text = text.replace(/\n{3,}/g, '\n\n');
 
   const lines = text.split('\n').map((line) => fixCommonGlyphs(line).trimEnd());
-  return lines.join('\n').trim();
+  text = lines
+    .filter((line) => {
+      const trimmed = line.trim();
+      if (!trimmed) return true;
+      const stripped = trimmed.replace(/[\s|\-_.=—–~•·]/g, '');
+      if (!stripped) return false;
+      if (stripped.length <= 2 && /[^\w]/.test(trimmed) && !/[A-Za-z0-9]/.test(stripped)) {
+        return false;
+      }
+      return true;
+    })
+    .join('\n');
+  text = text.replace(/\n{3,}/g, '\n\n');
+  return text.trim();
 }

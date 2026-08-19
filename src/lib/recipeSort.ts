@@ -84,7 +84,7 @@ export function sortPageText(ocrText: string, sourceImageIndex: number): SortedC
     });
   });
 
-  return mergeTinyOthers(clips);
+  return absorbStrayIngredients(mergeTinyOthers(clips));
 }
 
 function splitIntoBlocks(text: string): string[] {
@@ -136,12 +136,39 @@ function splitIntoBlocks(text: string): string[] {
   return blocks;
 }
 
+const QUANTITY_LINE = /^\s*\d+([\/.]\d+)?\s+[A-Za-z]/;
+
+function looksLikeNewRecipe(block: string): boolean {
+  const lines = block
+    .trim()
+    .split(/\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+  if (lines.length < 2) return false;
+  if (/^[A-Z][A-Za-z].{1,50}$/.test(lines[0]) && SECTION_HEADER.test(lines[1])) return true;
+  if (/^[A-Z][A-Za-z].{1,50}$/.test(lines[0]) && /\bingredients?\b/i.test(block) && MEASURE.test(block)) {
+    return true;
+  }
+  return false;
+}
+
 function isRecipeFragment(block: string): boolean {
   const t = block.trim();
-  if (!t) return false;
-  if (MEASURE.test(t) || STEP_LINE.test(t)) return true;
+  if (!t || looksLikeNewRecipe(t)) return false;
+  if (MEASURE.test(t) || STEP_LINE.test(t) || QUANTITY_LINE.test(t)) return true;
   if (SECTION_HEADER.test(t)) return true;
-  return RECIPE_HINTS.test(t) && t.length < 90;
+  return RECIPE_HINTS.test(t) && t.length < 90 && t.split('\n').length <= 4;
+}
+
+function looksLikeRecipeStart(block: string): boolean {
+  return RECIPE_HINTS.test(block) || MEASURE.test(block) || QUANTITY_LINE.test(block);
+}
+
+function isContinuationLine(block: string): boolean {
+  const t = block.trim();
+  if (!t || looksLikeNewRecipe(t) || t.length > 90 || t.split('\n').length > 3) return false;
+  if (/^[A-Z][A-Za-z][A-Za-z ',-]{2,40}$/.test(t) && !/,/.test(t)) return false;
+  return true;
 }
 
 /** Tesseract often emits each ingredient as its own blank-line block. Glue those back. */
@@ -150,7 +177,12 @@ function coalesceRecipeFragments(blocks: string[]): string[] {
   for (const block of blocks) {
     const prev = out[out.length - 1];
     const prevShort = Boolean(prev && prev.length < 2200 && prev.split('\n').length < 55);
-    if (prev && prevShort && isRecipeFragment(block)) {
+    const glue =
+      prev &&
+      prevShort &&
+      !looksLikeNewRecipe(block) &&
+      (isRecipeFragment(block) || (looksLikeRecipeStart(prev) && isContinuationLine(block)));
+    if (glue) {
       out[out.length - 1] = `${prev}\n${block}`;
     } else {
       out.push(block);
@@ -185,6 +217,43 @@ function splitByTitleLines(text: string): string[] {
   }
   if (current.length) chunks.push(current.join('\n').trim());
   return chunks.filter((c) => c.length > 12);
+}
+
+function strayIngredientClip(clip: SortedClip): boolean {
+  if (clip.body.length >= 140) return false;
+  const lines = clip.body.split(/\n/).filter((l) => l.trim());
+  if (lines.length > 3) return false;
+  return MEASURE.test(clip.body) || QUANTITY_LINE.test(clip.body) || STEP_LINE.test(clip.body);
+}
+
+/** Pull leftover ingredient/step lines into the neighboring recipe on the same page. */
+function absorbStrayIngredients(clips: SortedClip[]): SortedClip[] {
+  const out: SortedClip[] = [];
+  for (const clip of clips) {
+    const prev = out[out.length - 1];
+    if (
+      prev?.kind === 'recipe' &&
+      clip.kind === 'other' &&
+      clip.sourceImageIndex === prev.sourceImageIndex &&
+      strayIngredientClip(clip)
+    ) {
+      prev.body = `${prev.body}\n${clip.body}`.trim();
+      continue;
+    }
+    if (
+      clip.kind === 'recipe' &&
+      prev?.kind === 'other' &&
+      prev.sourceImageIndex === clip.sourceImageIndex &&
+      strayIngredientClip(prev)
+    ) {
+      const merged = { ...clip, body: `${prev.body}\n${clip.body}`.trim() };
+      merged.title = titleFromBlock(merged.body);
+      out[out.length - 1] = merged;
+      continue;
+    }
+    out.push(clip);
+  }
+  return out;
 }
 
 function mergeTinyOthers(clips: SortedClip[]): SortedClip[] {

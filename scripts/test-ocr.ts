@@ -114,4 +114,51 @@ assert.equal(isLikelyVideoFile({ name: 'shelf.MOV', type: '' }), true);
 assert.equal(isHeicLike({ name: 'IMG_1234.heic', type: '' }), true);
 assert.equal(isLikelyImageFile({ name: 'photo', type: 'image/jpeg' }), true);
 
+console.log('→ quantity lines without units still glue into one recipe');
+const splitIng = sortPageText(
+  `Sheet-Pan Lemon Chicken
+
+Ingredients
+
+4 chicken thighs
+
+2 tbsp olive oil
+
+garlic, and lemon.
+
+Directions
+
+1. Preheat oven to 425 F.
+
+4. Roast 35 minutes until crisp.`,
+  0,
+);
+const recipes = splitIng.filter((c) => c.kind === 'recipe');
+assert.equal(recipes.length, 1, JSON.stringify(splitIng.map((c) => ({ k: c.kind, t: c.title }))));
+assert.match(recipes[0].body, /chicken thighs/);
+assert.match(recipes[0].body, /Roast 35/);
+
+console.log('→ notebook rule lines are dropped');
+assert.doesNotMatch(cleanupOcrText('Tomato soup\n—.—\nIngredients\n2 c tomatoes'), /—\.—/);
+
+console.log('→ two recipes on one page stay separate');
+const two = sortPageText(
+  `Lemon Chicken
+Ingredients
+2 tbsp oil
+Directions
+Bake 20 minutes.
+
+Pasta Salad
+Ingredients
+1 cup pasta
+Directions
+Toss and chill.`,
+  0,
+);
+const twoRecipes = two.filter((c) => c.kind === 'recipe');
+assert.ok(twoRecipes.length >= 2, JSON.stringify(two.map((c) => c.title)));
+assert.ok(twoRecipes.some((c) => /Lemon Chicken/.test(c.body)));
+assert.ok(twoRecipes.some((c) => /Pasta Salad/.test(c.body)));
+
 console.log('test-ocr: ok');
