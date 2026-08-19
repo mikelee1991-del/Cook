@@ -1,9 +1,41 @@
-import { createWorker, PSM } from 'tesseract.js';
-import { prepareImageForOcr } from './ocrPreprocess';
-import { cleanupOcrText, ocrTextLooksWeak } from './ocrText';
+import { createWorker, OEM, PSM } from 'tesseract.js';
+import { prepareOcrPage, type OcrVariant } from './ocrPreprocess';
+import { cleanupOcrText, ocrTextLooksStrong, scoreOcrResult } from './ocrText';
 import { orderClipsForDisplay, sortPageText, type SortedClip } from './recipeSort';
 
 type OcrSource = string | Blob;
+
+interface OcrAttempt {
+  text: string;
+  confidence: number;
+  score: number;
+}
+
+const RECOGNIZE_MS = 90_000;
+
+function psmsFor(density: 'print' | 'sparse', split: boolean): PSM[] {
+  if (density === 'sparse') {
+    return [PSM.SPARSE_TEXT, PSM.SINGLE_BLOCK, PSM.AUTO];
+  }
+  if (split) {
+    return [PSM.SINGLE_COLUMN, PSM.SINGLE_BLOCK];
+  }
+  return [PSM.AUTO, PSM.SINGLE_BLOCK, PSM.SINGLE_COLUMN];
+}
+
+async function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`${label} timed out`)), ms);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
 
 async function readCanvas(
   worker: Awaited<ReturnType<typeof createWorker>>,
@@ -15,57 +47,135 @@ async function readCanvas(
     preserve_interword_spaces: '1',
     user_defined_dpi: '300',
   });
-  const result = await worker.recognize(canvas, { rotateAuto: true });
+  const result = await withTimeout(
+    worker.recognize(canvas, { rotateAuto: true }, { text: true }),
+    RECOGNIZE_MS,
+    'Text recognition',
+  );
   return {
     text: cleanupOcrText(result.data.text || ''),
     confidence: result.data.confidence ?? 0,
   };
 }
 
+async function readSlices(
+  worker: Awaited<ReturnType<typeof createWorker>>,
+  slices: HTMLCanvasElement[],
+  psms: PSM[],
+  density: 'print' | 'sparse',
+): Promise<OcrAttempt> {
+  const parts: string[] = [];
+  let confSum = 0;
+  let confN = 0;
+  for (const slice of slices) {
+    let best = { text: '', confidence: 0, score: -1 };
+    for (const psm of psms) {
+      const read = await readCanvas(worker, slice, psm);
+      const score = scoreOcrResult(read.text, read.confidence);
+      if (score > best.score) best = { ...read, score };
+      if (ocrTextLooksStrong(read.text, read.confidence)) break;
+      if (density === 'sparse' && score >= 50 && read.confidence >= 38) break;
+    }
+    if (best.text) parts.push(best.text);
+    confSum += best.confidence;
+    confN += 1;
+  }
+  const text = parts.filter(Boolean).join('\n\n');
+  const confidence = confN ? confSum / confN : 0;
+  return { text, confidence, score: scoreOcrResult(text, confidence) };
+}
+
 async function readPageBestEffort(
   worker: Awaited<ReturnType<typeof createWorker>>,
-  canvas: HTMLCanvasElement,
+  prep: Awaited<ReturnType<typeof prepareOcrPage>>,
+  onProgress?: (message: string) => void,
 ): Promise<string> {
-  const primary = await readCanvas(worker, canvas, PSM.SINGLE_COLUMN);
-  if (!ocrTextLooksWeak(primary.text, primary.confidence)) return primary.text;
+  let best: OcrAttempt = { text: '', confidence: 0, score: -1 };
+  const ordered: OcrVariant[] =
+    prep.density === 'sparse'
+      ? [...prep.variants].sort((a, b) => Number(a.name !== 'handwriting') - Number(b.name !== 'handwriting'))
+      : prep.variants;
 
-  const fallback = await readCanvas(worker, canvas, PSM.SINGLE_BLOCK);
-  if (fallback.confidence > primary.confidence || fallback.text.length > primary.text.length) {
-    return fallback.text;
+  for (const variant of ordered) {
+    onProgress?.(
+      variant.name === 'handwriting'
+        ? 'Trying a handwriting pass…'
+        : variant.name === 'binary'
+            ? 'Trying a high-contrast pass…'
+            : variant.slices.length > 1
+              ? 'Reading columns…'
+              : 'Reading printed text…',
+    );
+    const attempt = await readSlices(
+      worker,
+      variant.slices,
+      psmsFor(prep.density, variant.slices.length > 1),
+      prep.density,
+    );
+    if (attempt.score > best.score) best = attempt;
+    if (ocrTextLooksStrong(attempt.text, attempt.confidence) && attempt.score >= 64) {
+      return best.text;
+    }
   }
-  return primary.text;
+  return best.text;
+}
+
+export interface ScanPageWarning {
+  page: number;
+  message: string;
+}
+
+export interface RecipeScanResult {
+  clips: SortedClip[];
+  warnings: ScanPageWarning[];
 }
 
 /**
- * OCR recipe photos. Preprocess (scale, contrast, column split) before Tesseract.
+ * OCR recipe photos. Preprocess (scale, contrast, column split, handwriting pass)
+ * then try several Tesseract layouts and keep the best text.
  * Pass original File/Blob when available — compressed storage JPEGs lose print detail.
  */
 export async function scanImagesForRecipes(
   images: OcrSource[],
   onProgress?: (message: string) => void,
 ): Promise<SortedClip[]> {
-  const worker = await createWorker('eng');
+  const { clips } = await scanImagesForRecipesDetailed(images, onProgress);
+  return clips;
+}
+
+export async function scanImagesForRecipesDetailed(
+  images: OcrSource[],
+  onProgress?: (message: string) => void,
+): Promise<RecipeScanResult> {
+  const worker = await createWorker('eng', OEM.LSTM_ONLY);
   const all: SortedClip[] = [];
+  const warnings: ScanPageWarning[] = [];
 
   try {
     for (let i = 0; i < images.length; i++) {
       onProgress?.(`Preparing page ${i + 1} of ${images.length}…`);
-      const slices = await prepareImageForOcr(images[i]);
-      const parts: string[] = [];
-      for (let s = 0; s < slices.length; s++) {
-        onProgress?.(
-          slices.length > 1
-            ? `Reading page ${i + 1} (${s === 0 ? 'left' : 'right'} column)…`
-            : `Reading page ${i + 1} of ${images.length}…`,
-        );
-        parts.push(await readPageBestEffort(worker, slices[s]));
+      try {
+        const prep = await prepareOcrPage(images[i]);
+        const text = await readPageBestEffort(worker, prep, (msg) => {
+          onProgress?.(`Page ${i + 1} of ${images.length}: ${msg}`);
+        });
+        if (!text.trim()) {
+          warnings.push({
+            page: i + 1,
+            message: 'No readable text found. Try a straighter, brighter photo of the page.',
+          });
+          continue;
+        }
+        all.push(...sortPageText(text, i));
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : 'Could not read text from this photo.';
+        warnings.push({ page: i + 1, message });
       }
-      const text = parts.filter(Boolean).join('\n\n');
-      all.push(...sortPageText(text, i));
     }
   } finally {
     await worker.terminate();
   }
 
-  return orderClipsForDisplay(all);
+  return { clips: orderClipsForDisplay(all), warnings };
 }

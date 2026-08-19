@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { groceryCatalog } from '../data/pantrySeed';
 import type { PantryItem, PantryMedia, PantrySection, RecommendedIngredient, Store } from '../types';
-import { compressImageFiles } from '../lib/imageCompress';
+import { compressImageBatch } from '../lib/imageCompress';
+import { isLikelyImageFile, isLikelyVideoFile } from '../lib/imageFiles';
 import {
   formatExpiryLabel,
   getExpirationStatus,
@@ -147,24 +148,27 @@ export function PantryTab({
       const images: File[] = [];
       const videos: File[] = [];
       files.forEach((f) => {
-        if (f.type.startsWith('image/')) images.push(f);
-        else if (f.type.startsWith('video/')) videos.push(f);
+        if (isLikelyImageFile(f)) images.push(f);
+        else if (isLikelyVideoFile(f)) videos.push(f);
       });
 
       const added: Omit<PantryMedia, 'id' | 'createdAt'>[] = [];
       let videoSkipError: string | null = null;
 
       if (images.length) {
-        const compressed = await compressImageFiles(images, (done, total) => {
+        const { items, failed } = await compressImageBatch(images, (done, total) => {
           setBusyLabel(`Compressing ${done} of ${total}…`);
         });
-        compressed.forEach((src, i) => {
+        items.forEach((item) => {
           added.push({
             kind: 'image',
-            src,
-            name: images[i]?.name || `pantry-${i + 1}.jpg`,
+            src: item.dataUrl,
+            name: item.file.name || 'pantry.jpg',
           });
         });
+        if (failed.length && !videoSkipError) {
+          videoSkipError = failed[0].reason;
+        }
       }
 
       for (const video of videos) {
