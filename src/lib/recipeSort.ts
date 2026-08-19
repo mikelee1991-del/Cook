@@ -136,7 +136,7 @@ function splitIntoBlocks(text: string): string[] {
   return blocks;
 }
 
-const QUANTITY_LINE = /^\s*\d+([\/.]\d+)?\s+[A-Za-z]/;
+const QUANTITY_LINE = /^\s*\d+([/.]\d+)?\s+[A-Za-z]/;
 
 function looksLikeNewRecipe(block: string): boolean {
   const lines = block
