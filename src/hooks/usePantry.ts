@@ -48,6 +48,7 @@ export function usePantry() {
         expiresAt: input.expiresAt,
         fromPurchaseHistory: false,
         frozen,
+        updatedAt: Date.now(),
       };
       setItems((prev) => [item, ...prev]);
       return item;
@@ -60,7 +61,13 @@ export function usePantry() {
   }, []);
 
   const updateItem = useCallback((id: string, patch: Partial<PantryItem>) => {
-    setItems((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
+    setItems((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, ...patch, updatedAt: Date.now() } : p)),
+    );
+  }, []);
+
+  const replaceAll = useCallback((next: PantryItem[]) => {
+    setItems(next);
   }, []);
 
   const resetPantry = useCallback(() => {
@@ -68,5 +75,5 @@ export function usePantry() {
     setItems(fresh);
   }, []);
 
-  return { items, addItem, removeItem, updateItem, resetPantry };
+  return { items, addItem, removeItem, updateItem, resetPantry, replaceAll };
 }

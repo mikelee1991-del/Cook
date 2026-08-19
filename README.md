@@ -4,7 +4,9 @@ Interactive dinner planner (Vite + React).
 
 **Always-on app:** [https://mikelee1991-del.github.io/Cook/](https://mikelee1991-del.github.io/Cook/)
 
-Data stays in the browser on that origin (it does not sync from a preview tunnel).
+Pantry, recommended ingredients, saved recipes, and scans sync automatically across devices that open the same Dinner link (the `#house=…` address). Snapshots are encrypted on the device before they are stored. GitHub Pages cannot accept uploads, so the default mailbox is a public ntfy.sh topic named from the unguessable house id; only ciphertext is stored there.
+
+To use your own store instead, set `VITE_DINNER_SYNC_URL` to a Dinner sync worker (`sync-worker/`) and rebuild.
 
 ## Commands
 

@@ -14,6 +14,7 @@ export interface PhotoScan {
   progress: string;
   error?: string;
   createdAt: string;
+  updatedAt?: number;
 }
 
 function loadScans(): PhotoScan[] {
@@ -95,7 +96,7 @@ export function usePhotoScans() {
       });
       setScans((prev) =>
         prev.map((s) =>
-          s.id === id ? { ...s, status: 'done', clips, error: undefined, progress: 'Done' } : s,
+          s.id === id ? { ...s, status: 'done', clips, error: undefined, progress: 'Done', updatedAt: Date.now() } : s,
         ),
       );
       return id;
@@ -146,6 +147,10 @@ export function usePhotoScans() {
     [runOcr, scans],
   );
 
+  const replaceAll = useCallback((next: PhotoScan[]) => {
+    setScans(next);
+  }, []);
+
   return {
     scans,
     error,
@@ -155,5 +160,6 @@ export function usePhotoScans() {
     removeClip,
     setClipKind,
     updateClip,
+    replaceAll,
   };
 }

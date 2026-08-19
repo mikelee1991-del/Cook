@@ -189,6 +189,29 @@
   color: var(--ink-soft);
 }
 
+.devices-panel {
+  margin: 0 0 1.1rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.devices-panel__status {
+  margin: 0;
+  font-weight: 650;
+  color: var(--ink);
+}
+
+.devices-panel__error {
+  margin: 0.35rem 0 0;
+  color: var(--danger);
+}
+
+.devices-panel__hint {
+  margin: 0.45rem 0 0;
+}
+
 .tab-panel {
   background: rgba(255, 255, 255, 0.55);
   border: 1px solid var(--line);

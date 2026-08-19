@@ -10,6 +10,7 @@
     "test:recommend": "tsx scripts/test-recommend.ts",
     "test:cook": "tsx scripts/test-cook.ts",
     "test:ocr": "tsx scripts/test-ocr.ts",
+    "test:sync": "tsx scripts/test-sync.ts",
     "preview": "vite preview",
     "validate": "node scripts/validate.mjs"
   },

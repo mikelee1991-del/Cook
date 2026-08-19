@@ -9,6 +9,8 @@ import { useRecommendedIngredients } from './hooks/useRecommendedIngredients';
 import { useSavedRecipes } from './hooks/useSavedRecipes';
 import { hardResetApp } from './lib/appStorage';
 import { pantryDraftFromName } from './lib/pantryDraft';
+import { DevicesPanel } from './components/DevicesPanel';
+import { useDinnerSync } from './hooks/useDinnerSync';
 import type { RecommendedIngredient } from './types';
 import './App.css';
 
@@ -16,15 +18,19 @@ type Tab = 'pantry' | 'cook' | 'saves';
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('pantry');
-  const { items, addItem, removeItem, updateItem, resetPantry } = usePantry();
-  const { media, error: mediaError, addMedia, removeMedia } = usePantryMedia();
+  const { items, addItem, removeItem, updateItem, resetPantry, replaceAll: replacePantry } = usePantry();
+  const { media, error: mediaError, addMedia, removeMedia, replaceAll: replaceMedia } = usePantryMedia();
   const {
     items: recommended,
+    manual: recommendedManual,
+    dismissed: recommendedDismissed,
     dismissedCount,
     addManual: addRecommended,
     updateItem: updateRecommended,
     removeItem: removeRecommended,
     clearDismissed: restoreRecommended,
+    replaceManual: replaceRecommendedManual,
+    replaceDismissed,
   } = useRecommendedIngredients(items);
   const {
     recipes: savedRecipes,
@@ -33,6 +39,7 @@ export default function App() {
     addLinkRecipe,
     removeRecipe,
     addImagesToRecipe,
+    replaceAll: replaceSaves,
   } = useSavedRecipes();
   const {
     scans,
@@ -42,7 +49,22 @@ export default function App() {
     removeScan,
     removeClip,
     setClipKind,
+    replaceAll: replaceScans,
   } = usePhotoScans();
+  const sync = useDinnerSync({
+    pantry: items,
+    replacePantry,
+    media,
+    replaceMedia,
+    recommendedManual,
+    replaceRecommendedManual,
+    dismissed: recommendedDismissed,
+    replaceDismissed,
+    saves: savedRecipes,
+    replaceSaves,
+    scans,
+    replaceScans,
+  });
 
   function addRecommendedToPantry(item: RecommendedIngredient) {
     addItem(pantryDraftFromName(item.name));
@@ -155,16 +177,23 @@ export default function App() {
       </main>
 
       <footer className="footer">
+        <DevicesPanel
+          status={sync.status}
+          error={sync.error}
+          shareUrl={sync.shareUrl}
+          lastSyncedAt={sync.lastSyncedAt}
+          onSyncNow={() => void sync.syncNow()}
+        />
         <p>
-          Data stays in this browser. Recipe page scans sort recipes vs other text automatically —
-          keep or discard each clip.
+          Recipe page scans sort recipes vs other text automatically — keep or discard each clip.
         </p>
         <p className="footer__tools">
           <button type="button" className="footer__reset" onClick={hardResetApp}>
             Hard reset
           </button>
           <span className="footer__reset-note">
-            Clears pantry, saves, scans, and shelf photos in this browser.
+            Clears pantry, saves, scans, and shelf photos on this device. Other devices keep their
+            copy unless you reset those too.
           </span>
         </p>
       </footer>
