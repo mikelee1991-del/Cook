@@ -1,3 +1,5 @@
+import { formatRecipeClipBody } from './recipeFormat';
+
 export type ClipKind = 'recipe' | 'other';
 
 export interface SortedClip {
@@ -11,12 +13,15 @@ export interface SortedClip {
 }
 
 const RECIPE_HINTS =
-  /\b(ingredients?|directions?|instructions?|method|preparation|preheat|bake|roast|simmer|whisk|tablespoons?|teaspoons?|tbsp|tsp|cups?|serves?|servings?|minutes?|oven|°[cf]|degrees)\b/i;
+  /\b(ingredients?|ingredlents|lngredients|directions?|directlons|instructions?|instructlons|method|preparation|preheat|prebeat|bake|roast|simmer|whisk|tablespoons?|teaspoons?|tbsp|tsp|cups?|serves?|servings?|minutes?|oven|°[cf]|degrees)\b/i;
 
 const MEASURE =
-  /\b(\d+\/\d+|\d+(\.\d+)?)\s?(cups?|tbsp|tsp|tablespoons?|teaspoons?|oz|ounces?|lb|lbs|pounds?|g|kg|ml|l|cloves?|cans?|sticks?)\b/i;
+  /\b(\d+\/\d+|\d+(\.\d+)?)\s?(cups?|c\.|c|tbsp|tsp|tablespoons?|teaspoons?|oz|ounces?|lb|lbs|pounds?|g|kg|ml|l|cloves?|cans?|sticks?)\b/i;
 
-const STEP_LINE = /^\s*(\d+[).]|step\s*\d+|•|-)\s+/i;
+const STEP_LINE = /^\s*(\d+[).]|[lI][).]|step\s*\d+|•|-)\s+/i;
+
+const SECTION_HEADER =
+  /^(ingredients?|ingredlents|lngredients|directions?|directlons|instructions?|instructlons|method|notes?|serves?)\b/i;
 
 function clipId(prefix: string, n: number): string {
   return `${prefix}-${n}-${Math.random().toString(36).slice(2, 7)}`;
@@ -30,9 +35,13 @@ function scoreRecipeLikelihood(text: string): number {
   if (RECIPE_HINTS.test(text)) score += 0.35;
   const measureHits = lines.filter((l) => MEASURE.test(l)).length;
   score += Math.min(0.35, measureHits * 0.07);
+  if (measureHits >= 2) score += 0.12;
   const stepHits = lines.filter((l) => STEP_LINE.test(l)).length;
   score += Math.min(0.2, stepHits * 0.05);
-  if (/\bingredients?\b/i.test(text) && /\b(directions?|instructions?|method)\b/i.test(text)) {
+  if (
+    /\b(ingredients?|ingredlents|lngredients)\b/i.test(text) &&
+    /\b(directions?|directlons|instructions?|instructlons|method)\b/i.test(text)
+  ) {
     score += 0.2;
   }
   return Math.max(0, Math.min(1, score));
@@ -46,7 +55,7 @@ function titleFromBlock(text: string): string {
       l.length < 80 &&
       !MEASURE.test(l) &&
       !STEP_LINE.test(l) &&
-      !/^(ingredients?|directions?|instructions?|method)\b/i.test(l),
+      !SECTION_HEADER.test(l),
   );
   return heading || lines[0]?.slice(0, 72) || 'Untitled clip';
 }
@@ -66,18 +75,34 @@ export function sortPageText(ocrText: string, sourceImageIndex: number): SortedC
     const body = block.trim();
     if (body.length < 12) return;
     const confidence = scoreRecipeLikelihood(body);
-    const kind: ClipKind = confidence >= 0.42 ? 'recipe' : 'other';
+    const kind: ClipKind = confidence >= 0.38 ? 'recipe' : 'other';
+    if (kind === 'recipe') {
+      const readable = formatRecipeClipBody(body);
+      clips.push({
+        id: clipId(`img${sourceImageIndex}`, i),
+        kind,
+        title: readable.title,
+        body: readable.body,
+        confidence,
+        sourceImageIndex,
+      });
+      return;
+    }
     clips.push({
       id: clipId(`img${sourceImageIndex}`, i),
       kind,
       title: titleFromBlock(body),
-      body,
+      body: body.replace(/\n{3,}/g, '\n\n').trim(),
       confidence,
       sourceImageIndex,
     });
   });
 
-  return mergeTinyOthers(clips);
+  return absorbStrayIngredients(mergeTinyOthers(clips)).map((clip) => {
+    if (clip.kind !== 'recipe') return clip;
+    const readable = formatRecipeClipBody(clip.body, clip.title);
+    return { ...clip, title: readable.title, body: readable.body };
+  });
 }
 
 function splitIntoBlocks(text: string): string[] {
@@ -129,12 +154,39 @@ function splitIntoBlocks(text: string): string[] {
   return blocks;
 }
 
+const QUANTITY_LINE = /^\s*\d+([/.]\d+)?\s+[A-Za-z]/;
+
+function looksLikeNewRecipe(block: string): boolean {
+  const lines = block
+    .trim()
+    .split(/\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+  if (lines.length < 2) return false;
+  if (/^[A-Z][A-Za-z].{1,50}$/.test(lines[0]) && SECTION_HEADER.test(lines[1])) return true;
+  if (/^[A-Z][A-Za-z].{1,50}$/.test(lines[0]) && /\bingredients?\b/i.test(block) && MEASURE.test(block)) {
+    return true;
+  }
+  return false;
+}
+
 function isRecipeFragment(block: string): boolean {
   const t = block.trim();
-  if (!t) return false;
-  if (MEASURE.test(t) || STEP_LINE.test(t)) return true;
-  if (/^(ingredients?|directions?|instructions?|method|notes?|serves?)\b/i.test(t)) return true;
-  return RECIPE_HINTS.test(t) && t.length < 90;
+  if (!t || looksLikeNewRecipe(t)) return false;
+  if (MEASURE.test(t) || STEP_LINE.test(t) || QUANTITY_LINE.test(t)) return true;
+  if (SECTION_HEADER.test(t)) return true;
+  return RECIPE_HINTS.test(t) && t.length < 90 && t.split('\n').length <= 4;
+}
+
+function looksLikeRecipeStart(block: string): boolean {
+  return RECIPE_HINTS.test(block) || MEASURE.test(block) || QUANTITY_LINE.test(block);
+}
+
+function isContinuationLine(block: string): boolean {
+  const t = block.trim();
+  if (!t || looksLikeNewRecipe(t) || t.length > 90 || t.split('\n').length > 3) return false;
+  if (/^[A-Z][A-Za-z][A-Za-z ',-]{2,40}$/.test(t) && !/,/.test(t)) return false;
+  return true;
 }
 
 /** Tesseract often emits each ingredient as its own blank-line block. Glue those back. */
@@ -142,8 +194,13 @@ function coalesceRecipeFragments(blocks: string[]): string[] {
   const out: string[] = [];
   for (const block of blocks) {
     const prev = out[out.length - 1];
-    const prevShort = Boolean(prev && prev.length < 1800 && prev.split('\n').length < 40);
-    if (prev && prevShort && isRecipeFragment(block)) {
+    const prevShort = Boolean(prev && prev.length < 2200 && prev.split('\n').length < 55);
+    const glue =
+      prev &&
+      prevShort &&
+      !looksLikeNewRecipe(block) &&
+      (isRecipeFragment(block) || (looksLikeRecipeStart(prev) && isContinuationLine(block)));
+    if (glue) {
       out[out.length - 1] = `${prev}\n${block}`;
     } else {
       out.push(block);
@@ -161,7 +218,7 @@ function splitByTitleLines(text: string): string[] {
     const t = line.trim();
     if (t.length < 4 || t.length > 60) return false;
     if (MEASURE.test(t) || STEP_LINE.test(t)) return false;
-    if (/^(ingredients?|directions?|instructions?|method|notes?)\b/i.test(t)) return false;
+    if (SECTION_HEADER.test(t)) return false;
     const letters = t.replace(/[^a-zA-Z]/g, '');
     if (letters.length < 4) return false;
     const caps = letters.replace(/[^A-Z]/g, '').length;
@@ -178,6 +235,78 @@ function splitByTitleLines(text: string): string[] {
   }
   if (current.length) chunks.push(current.join('\n').trim());
   return chunks.filter((c) => c.length > 12);
+}
+
+function strayIngredientClip(clip: SortedClip): boolean {
+  if (clip.body.length >= 140) return false;
+  const lines = clip.body.split(/\n/).filter((l) => l.trim());
+  if (lines.length > 3) return false;
+  return MEASURE.test(clip.body) || QUANTITY_LINE.test(clip.body) || STEP_LINE.test(clip.body);
+}
+
+function isOrphanTitle(clip: SortedClip): boolean {
+  if (clip.kind === 'recipe') return false;
+  const lines = clip.body
+    .split(/\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+  if (lines.length !== 1) return false;
+  const t = lines[0];
+  if (t.length < 3 || t.length > 72) return false;
+  if (MEASURE.test(t) || STEP_LINE.test(t) || SECTION_HEADER.test(t) || QUANTITY_LINE.test(t)) {
+    return false;
+  }
+  return true;
+}
+
+/** Pull leftover ingredient/step lines into the neighboring recipe on the same page. */
+function absorbStrayIngredients(clips: SortedClip[]): SortedClip[] {
+  const out: SortedClip[] = [];
+  for (const clip of clips) {
+    const prev = out[out.length - 1];
+    if (
+      prev &&
+      isOrphanTitle(prev) &&
+      clip.kind === 'recipe' &&
+      clip.sourceImageIndex === prev.sourceImageIndex
+    ) {
+      const title = prev.body.trim().split(/\n/)[0].trim();
+      const readable = formatRecipeClipBody(clip.body, title);
+      out[out.length - 1] = {
+        ...clip,
+        title: readable.title,
+        body: readable.body,
+      };
+      continue;
+    }
+    if (
+      prev?.kind === 'recipe' &&
+      clip.kind === 'other' &&
+      clip.sourceImageIndex === prev.sourceImageIndex &&
+      strayIngredientClip(clip)
+    ) {
+      const readable = formatRecipeClipBody(`${prev.body}\n${clip.body}`, prev.title);
+      prev.body = readable.body;
+      prev.title = readable.title;
+      continue;
+    }
+    if (
+      clip.kind === 'recipe' &&
+      prev?.kind === 'other' &&
+      prev.sourceImageIndex === clip.sourceImageIndex &&
+      strayIngredientClip(prev)
+    ) {
+      const readable = formatRecipeClipBody(`${prev.body}\n${clip.body}`, clip.title);
+      out[out.length - 1] = {
+        ...clip,
+        title: readable.title,
+        body: readable.body,
+      };
+      continue;
+    }
+    out.push(clip);
+  }
+  return out;
 }
 
 function mergeTinyOthers(clips: SortedClip[]): SortedClip[] {

@@ -2,7 +2,8 @@ import { useRef, useState } from 'react';
 import type { PhotoScan } from '../hooks/usePhotoScans';
 import type { SortedClip } from '../lib/recipeSort';
 import type { SavedRecipe } from '../types';
-import { compressImageFiles } from '../lib/imageCompress';
+import { compressImageBatch } from '../lib/imageCompress';
+import { isLikelyImageFile } from '../lib/imageFiles';
 import { BulkUploadZone } from './BulkUploadZone';
 
 interface SavesTabProps {
@@ -55,18 +56,29 @@ export function SavesTab({
     setFormError(null);
     setBusyLabel(`Preparing ${files.length} photo${files.length === 1 ? '' : 's'}…`);
     try {
-      const imageFiles = files.filter((f) => f.type.startsWith('image/'));
-      const compressed = await compressImageFiles(imageFiles, (done, total) => {
-        setBusyLabel(`Compressing ${done} of ${total}…`);
-      });
-      if (!compressed.length) {
-        setFormError('Choose image files (JPG, PNG, etc.).');
+      const imageFiles = files.filter(isLikelyImageFile);
+      if (!imageFiles.length) {
+        setFormError('Choose image files (JPG, PNG, WebP, HEIC in Safari).');
         return;
       }
-      setPendingFiles((prev) => [...prev, ...imageFiles]);
-      setPendingImages((prev) => [...prev, ...compressed]);
+      const { items, failed } = await compressImageBatch(imageFiles, (done, total) => {
+        setBusyLabel(`Compressing ${done} of ${total}…`);
+      });
+      if (items.length) {
+        setPendingFiles((prev) => [...prev, ...items.map((item) => item.file)]);
+        setPendingImages((prev) => [...prev, ...items.map((item) => item.dataUrl)]);
+      }
+      if (failed.length && !items.length) {
+        setFormError(failed[0].reason);
+      } else if (failed.length) {
+        setFormError(
+          `${failed.length} photo${failed.length === 1 ? '' : 's'} skipped. ${failed[0].reason}`,
+        );
+      } else if (!items.length) {
+        setFormError('Choose image files (JPG, PNG, WebP, HEIC in Safari).');
+      }
     } catch {
-      setFormError('Could not read one or more images. Try a different format.');
+      setFormError('Could not read one or more images. Try JPG or PNG.');
     } finally {
       setBusy(false);
       setBusyLabel('Working…');
@@ -77,7 +89,8 @@ export function SavesTab({
     if (!files?.length || !appendTargetId) return;
     setBusy(true);
     try {
-      const compressed = await compressImageFiles(files);
+      const { items } = await compressImageBatch(Array.from(files));
+      const compressed = items.map((item) => item.dataUrl);
       if (compressed.length) onAddImages(appendTargetId, compressed);
     } finally {
       setBusy(false);
@@ -152,8 +165,9 @@ export function SavesTab({
       <header className="panel-intro">
         <h2>Recipe saves</h2>
         <p>
-          Upload any page photo — even if it mixes several recipes with other text. Bulk-upload
-          many pages at once; Dinner sorts recipes vs other text automatically.
+          Upload cookbook pages, cards, screenshots, or handwritten notes. Mixed layouts and
+          several recipes on one page are sorted automatically. Block letters read better than
+          loopy cursive.
         </p>
       </header>
 
@@ -194,15 +208,16 @@ export function SavesTab({
         <form className="add-form" onSubmit={handleScanSubmit}>
           <h3>Scan pages in bulk</h3>
           <p className="add-form__hint">
-            Select dozens of photos, drag a folder, or drop files here. Pages are read at full
-            photo detail (not the compressed preview), then sorted into recipes vs other text.
+            Drop cookbook scans, phone photos, cards, or handwritten lists. Crooked pages are
+            deskewed; two-column print is split; faint pencil gets a high-contrast pass. Original
+            files are read (not the small preview).
           </p>
           <BulkUploadZone
             accept="image/*"
             disabled={busy}
             busyLabel={busyLabel}
             idleLabel="Drop many photos or a folder — or click to choose"
-            hint="Supports multi-select and folder upload. You can add more batches before scanning."
+            hint="JPG, PNG, and WebP work everywhere. iPhone HEIC works in Safari. You can add more batches before scanning."
             onFiles={ingestFiles}
           />
 
@@ -313,6 +328,15 @@ export function SavesTab({
                       <p className="recipe__desc">{scan.progress}</p>
                     )}
                     {scan.error && <p className="expiry-banner__expired">{scan.error}</p>}
+                    {scan.status === 'done' &&
+                      scan.warnings &&
+                      scan.warnings.length > 0 &&
+                      scan.clips.length > 0 && (
+                        <p className="recipe__desc">
+                          {scan.warnings.length} page{scan.warnings.length === 1 ? '' : 's'} needed
+                          a second look — {scan.warnings[0]}
+                        </p>
+                      )}
                   </div>
                   <div className="clip-card__actions">
                     {scan.status !== 'scanning' && (
@@ -449,7 +473,9 @@ export function SavesTab({
                   {recipe.kind === 'photos' ? 'Photo recipe' : 'Internet link'}
                 </p>
                 <h3 className="recipe__title">{recipe.title}</h3>
-                {recipe.notes && <p className="recipe__desc recipe__desc--clamp">{recipe.notes}</p>}
+                {recipe.notes && (
+                  <pre className="recipe__notes recipe__notes--clamp">{recipe.notes}</pre>
+                )}
                 <p className="save-card__date">
                   Saved {new Date(recipe.createdAt).toLocaleDateString()}
                 </p>
