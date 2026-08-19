@@ -1057,6 +1057,21 @@
   overflow: hidden;
 }
 
+.recipe__notes {
+  margin: 0.35rem 0 0;
+  white-space: pre-wrap;
+  font-family: var(--font-body);
+  font-size: 0.92rem;
+  line-height: 1.45;
+  color: var(--ink-soft);
+}
+
+.recipe__notes--clamp {
+  max-height: 7.2rem;
+  overflow: hidden;
+  mask-image: linear-gradient(to bottom, #000 70%, transparent);
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;

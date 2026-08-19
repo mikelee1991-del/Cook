@@ -1,3 +1,5 @@
+import { formatRecipeClipBody } from './recipeFormat';
+
 export type ClipKind = 'recipe' | 'other';
 
 export interface SortedClip {
@@ -74,17 +76,33 @@ export function sortPageText(ocrText: string, sourceImageIndex: number): SortedC
     if (body.length < 12) return;
     const confidence = scoreRecipeLikelihood(body);
     const kind: ClipKind = confidence >= 0.38 ? 'recipe' : 'other';
+    if (kind === 'recipe') {
+      const readable = formatRecipeClipBody(body);
+      clips.push({
+        id: clipId(`img${sourceImageIndex}`, i),
+        kind,
+        title: readable.title,
+        body: readable.body,
+        confidence,
+        sourceImageIndex,
+      });
+      return;
+    }
     clips.push({
       id: clipId(`img${sourceImageIndex}`, i),
       kind,
       title: titleFromBlock(body),
-      body,
+      body: body.replace(/\n{3,}/g, '\n\n').trim(),
       confidence,
       sourceImageIndex,
     });
   });
 
-  return absorbStrayIngredients(mergeTinyOthers(clips));
+  return absorbStrayIngredients(mergeTinyOthers(clips)).map((clip) => {
+    if (clip.kind !== 'recipe') return clip;
+    const readable = formatRecipeClipBody(clip.body, clip.title);
+    return { ...clip, title: readable.title, body: readable.body };
+  });
 }
 
 function splitIntoBlocks(text: string): string[] {
@@ -226,18 +244,50 @@ function strayIngredientClip(clip: SortedClip): boolean {
   return MEASURE.test(clip.body) || QUANTITY_LINE.test(clip.body) || STEP_LINE.test(clip.body);
 }
 
+function isOrphanTitle(clip: SortedClip): boolean {
+  if (clip.kind === 'recipe') return false;
+  const lines = clip.body
+    .split(/\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+  if (lines.length !== 1) return false;
+  const t = lines[0];
+  if (t.length < 3 || t.length > 72) return false;
+  if (MEASURE.test(t) || STEP_LINE.test(t) || SECTION_HEADER.test(t) || QUANTITY_LINE.test(t)) {
+    return false;
+  }
+  return true;
+}
+
 /** Pull leftover ingredient/step lines into the neighboring recipe on the same page. */
 function absorbStrayIngredients(clips: SortedClip[]): SortedClip[] {
   const out: SortedClip[] = [];
   for (const clip of clips) {
     const prev = out[out.length - 1];
     if (
+      prev &&
+      isOrphanTitle(prev) &&
+      clip.kind === 'recipe' &&
+      clip.sourceImageIndex === prev.sourceImageIndex
+    ) {
+      const title = prev.body.trim().split(/\n/)[0].trim();
+      const readable = formatRecipeClipBody(clip.body, title);
+      out[out.length - 1] = {
+        ...clip,
+        title: readable.title,
+        body: readable.body,
+      };
+      continue;
+    }
+    if (
       prev?.kind === 'recipe' &&
       clip.kind === 'other' &&
       clip.sourceImageIndex === prev.sourceImageIndex &&
       strayIngredientClip(clip)
     ) {
-      prev.body = `${prev.body}\n${clip.body}`.trim();
+      const readable = formatRecipeClipBody(`${prev.body}\n${clip.body}`, prev.title);
+      prev.body = readable.body;
+      prev.title = readable.title;
       continue;
     }
     if (
@@ -246,9 +296,12 @@ function absorbStrayIngredients(clips: SortedClip[]): SortedClip[] {
       prev.sourceImageIndex === clip.sourceImageIndex &&
       strayIngredientClip(prev)
     ) {
-      const merged = { ...clip, body: `${prev.body}\n${clip.body}`.trim() };
-      merged.title = titleFromBlock(merged.body);
-      out[out.length - 1] = merged;
+      const readable = formatRecipeClipBody(`${prev.body}\n${clip.body}`, clip.title);
+      out[out.length - 1] = {
+        ...clip,
+        title: readable.title,
+        body: readable.body,
+      };
       continue;
     }
     out.push(clip);

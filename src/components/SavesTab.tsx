@@ -473,7 +473,9 @@ export function SavesTab({
                   {recipe.kind === 'photos' ? 'Photo recipe' : 'Internet link'}
                 </p>
                 <h3 className="recipe__title">{recipe.title}</h3>
-                {recipe.notes && <p className="recipe__desc recipe__desc--clamp">{recipe.notes}</p>}
+                {recipe.notes && (
+                  <pre className="recipe__notes recipe__notes--clamp">{recipe.notes}</pre>
+                )}
                 <p className="save-card__date">
                   Saved {new Date(recipe.createdAt).toLocaleDateString()}
                 </p>
