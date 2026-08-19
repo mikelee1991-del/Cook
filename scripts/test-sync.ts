@@ -56,6 +56,16 @@ console.log('→ tombstones win over older items');
 const afterDelete = mergeById([item('gone', 'salt', 2)], [item('gone', 'salt', 2)], { gone: 10 });
 assert.equal(afterDelete.length, 0);
 assert.equal(mergeTombs({ a: 1 }, { a: 4, b: 2 }).a, 4);
+const noStamp: PantryItem = {
+  id: 'spice-1',
+  name: 'Kosher salt',
+  store: 'Staple',
+  section: 'dry',
+  quantity: '1 box',
+  purchasedAt: '2026-01-01',
+  expiresAt: '2028-01-01',
+};
+assert.equal(mergeById([noStamp], [], {}).length, 1);
 
 console.log('→ two devices merge pantry + saves');
 const laptop = emptySnapshot('laptop', 100);
@@ -128,16 +138,66 @@ assert.equal(latestNtfyMessage(ndjson)?.attachment?.url, 'https://ntfy.sh/file/x
 assert.equal(latestNtfyMessage('{"event":"message","message":"v1.iv.ct"}\n')?.message, 'v1.iv.ct');
 assert.equal(latestNtfyMessage(''), null);
 
+async function pullUntil(
+  slot: string,
+  match: (payload: string) => boolean | Promise<boolean>,
+): Promise<string> {
+  let last: string | null = null;
+  for (let i = 0; i < 12; i++) {
+    if (i > 0) await new Promise((r) => setTimeout(r, 400));
+    last = await pullHousePayload(slot);
+    if (last && (await match(last))) return last;
+  }
+  throw new Error('Mailbox did not update in time');
+}
+
 console.log('→ live encrypted mailbox roundtrip');
 const liveSlot = `t${house.slot}`.replace(/[^A-Za-z0-9_-]/g, '').slice(0, 40);
 const livePayload = await encryptJson({ pantry: ['eggs'] }, house.secret);
 await pushHousePayload(liveSlot, livePayload);
-let pulled: string | null = null;
-for (let i = 0; i < 8 && pulled !== livePayload; i++) {
-  if (i > 0) await new Promise((r) => setTimeout(r, 350));
-  pulled = await pullHousePayload(liveSlot);
-}
-assert.equal(pulled, livePayload);
+const pulled = await pullUntil(liveSlot, (payload) => payload === livePayload);
 assert.deepEqual(await decryptJson<{ pantry: string[] }>(pulled, house.secret), { pantry: ['eggs'] });
+
+console.log('→ two devices merge through the mailbox');
+const pairSlot = `p${house.slot}`.replace(/[^A-Za-z0-9_-]/g, '').slice(0, 40);
+const pairSecret = house.secret;
+const laptopSnap = emptySnapshot('laptop', 100);
+laptopSnap.pantry = [item('flour', 'Flour', 100)];
+await pushHousePayload(pairSlot, await encryptJson(laptopSnap, pairSecret));
+const fromLaptop = await pullUntil(pairSlot, async (payload) => {
+  try {
+    const remote = await decryptJson<typeof laptopSnap>(payload, pairSecret);
+    return Array.isArray(remote.pantry) && remote.pantry.some((p) => p.id === 'flour');
+  } catch {
+    return false;
+  }
+});
+const phoneSnap = emptySnapshot('phone', 200);
+phoneSnap.pantry = [item('eggs', 'Eggs', 200)];
+const phoneMerged = mergeSnapshots(
+  phoneSnap,
+  await decryptJson<typeof laptopSnap>(fromLaptop, pairSecret),
+);
+assert.ok(phoneMerged.pantry.some((p) => p.id === 'flour'));
+assert.ok(phoneMerged.pantry.some((p) => p.id === 'eggs'));
+await pushHousePayload(pairSlot, await encryptJson(phoneMerged, pairSecret));
+const fromPhone = await pullUntil(pairSlot, async (payload) => {
+  try {
+    const remote = await decryptJson<typeof laptopSnap>(payload, pairSecret);
+    return (
+      Array.isArray(remote.pantry) &&
+      remote.pantry.some((p) => p.id === 'flour') &&
+      remote.pantry.some((p) => p.id === 'eggs')
+    );
+  } catch {
+    return false;
+  }
+});
+const backOnLaptop = mergeSnapshots(
+  laptopSnap,
+  await decryptJson<typeof laptopSnap>(fromPhone, pairSecret),
+);
+assert.ok(backOnLaptop.pantry.some((p) => p.id === 'flour'));
+assert.ok(backOnLaptop.pantry.some((p) => p.id === 'eggs'));
 
 console.log('test-sync: ok');

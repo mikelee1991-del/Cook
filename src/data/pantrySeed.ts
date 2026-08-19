@@ -172,7 +172,7 @@ export function createBasicSpices(): PantryItem[] {
     },
   ];
 
-  return spices.map((s, i) => ({ ...s, id: id('spice', i + 1) }));
+  return spices.map((s, i) => ({ ...s, id: id('spice', i + 1), updatedAt: 1 }));
 }
 
 /** @deprecated Use createBasicSpices — no purchase history is invented. */

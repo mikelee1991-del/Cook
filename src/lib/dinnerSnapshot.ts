@@ -56,7 +56,11 @@ export function mergeById<T extends { id: string; updatedAt?: number }>(
     const prev = map.get(item.id);
     if (!prev || stamp(item) >= stamp(prev)) map.set(item.id, item);
   }
-  return [...map.values()].filter((item) => stamp(item) > (tombs[item.id] ?? 0));
+  return [...map.values()].filter((item) => {
+    const tomb = tombs[item.id];
+    if (tomb == null || tomb <= 0) return true;
+    return stamp(item) > tomb;
+  });
 }
 
 export function emptySnapshot(deviceId: string, revisedAt = Date.now()): DinnerSnapshot {
