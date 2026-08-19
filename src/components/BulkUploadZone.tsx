@@ -1,4 +1,5 @@
 import { useRef, useState, type InputHTMLAttributes } from 'react';
+import { collectMediaFiles, isLikelyImageFile, isLikelyVideoFile } from '../lib/imageFiles';
 
 interface BulkUploadZoneProps {
   accept?: string;
@@ -11,16 +12,15 @@ interface BulkUploadZoneProps {
   onFiles: (files: File[]) => void | Promise<void>;
 }
 
-function collectFiles(list: FileList | File[]): File[] {
-  return Array.from(list).filter(
-    (f) => f.type.startsWith('image/') || f.type.startsWith('video/'),
-  );
+function keepFile(file: File, allowVideo: boolean): boolean {
+  if (isLikelyVideoFile(file)) return allowVideo;
+  return isLikelyImageFile(file);
 }
 
 /** Recursively read files dropped from a folder (Chrome/Edge). */
-async function filesFromDataTransfer(dt: DataTransfer): Promise<File[]> {
+async function filesFromDataTransfer(dt: DataTransfer, allowVideo: boolean): Promise<File[]> {
   const items = dt.items;
-  if (!items?.length) return collectFiles(dt.files);
+  if (!items?.length) return collectMediaFiles(dt.files, allowVideo);
 
   const out: File[] = [];
 
@@ -29,9 +29,7 @@ async function filesFromDataTransfer(dt: DataTransfer): Promise<File[]> {
       const file = await new Promise<File | null>((resolve) => {
         (entry as FileSystemFileEntry).file(resolve, () => resolve(null));
       });
-      if (file && (file.type.startsWith('image/') || file.type.startsWith('video/'))) {
-        out.push(file);
-      }
+      if (file && keepFile(file, allowVideo)) out.push(file);
       return;
     }
     if (entry.isDirectory) {
@@ -52,13 +50,13 @@ async function filesFromDataTransfer(dt: DataTransfer): Promise<File[]> {
     if (entry) entries.push(entry);
   }
 
-  if (!entries.length) return collectFiles(dt.files);
+  if (!entries.length) return collectMediaFiles(dt.files, allowVideo);
   for (const entry of entries) await walkEntry(entry);
   return out;
 }
 
 export function BulkUploadZone({
-  accept = 'image/*',
+  accept = 'image/*,.heic,.heif,.jpeg,.jpg,.png,.webp,.gif',
   allowFolder = true,
   disabled = false,
   busyLabel = 'Processing…',
@@ -70,6 +68,7 @@ export function BulkUploadZone({
   const folderRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [localBusy, setLocalBusy] = useState(false);
+  const allowVideo = accept.includes('video');
 
   async function emit(files: File[]) {
     if (!files.length || disabled) return;
@@ -108,7 +107,7 @@ export function BulkUploadZone({
         onDrop={async (e) => {
           e.preventDefault();
           setDragging(false);
-          const files = await filesFromDataTransfer(e.dataTransfer);
+          const files = await filesFromDataTransfer(e.dataTransfer, allowVideo);
           await emit(files);
         }}
       >
@@ -118,7 +117,7 @@ export function BulkUploadZone({
           accept={accept}
           multiple
           disabled={busy}
-          onChange={(e) => emit(collectFiles(e.target.files ?? []))}
+          onChange={(e) => emit(collectMediaFiles(e.target.files ?? [], allowVideo))}
         />
         <p>{busy ? busyLabel : idleLabel}</p>
       </div>
@@ -149,7 +148,7 @@ export function BulkUploadZone({
               multiple
               className="visually-hidden"
               disabled={busy}
-              onChange={(e) => emit(collectFiles(e.target.files ?? []))}
+              onChange={(e) => emit(collectMediaFiles(e.target.files ?? [], allowVideo))}
               {...({ webkitdirectory: '', directory: '' } as InputHTMLAttributes<HTMLInputElement>)}
             />
           </>

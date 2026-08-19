@@ -66,9 +66,14 @@ assert.doesNotMatch(cook, /Instant Pot|Air fryer|air-fryer|instant-pot/, 'cook U
 assert.match(read('src/lib/frozenHandling.ts'), /cook-from-frozen/, 'frozen cook timing');
 assert.match(read('src/components/PantryTab.tsx'), /Unfreeze|Freeze/, 'pantry freeze toggle');
 
-assert.match(read('src/lib/scanImages.ts'), /prepareImageForOcr/, 'OCR preprocess wired');
+assert.match(read('src/lib/scanImages.ts'), /prepareOcrPage/, 'OCR preprocess wired');
 assert.match(read('src/lib/ocrPreprocess.ts'), /grayscaleContrast/, 'contrast stretch for recipe photos');
+assert.match(read('src/lib/ocrPreprocess.ts'), /adaptiveBinarize/, 'handwriting / uneven-light binarize');
+assert.match(read('src/lib/scanImages.ts'), /SPARSE_TEXT/, 'handwriting page segmentation');
+assert.match(read('src/lib/ocrText.ts'), /pageDensityFromInk/, 'sparse vs print layout');
+assert.match(read('src/lib/imageFiles.ts'), /isLikelyImageFile/, 'blank MIME image sniffing');
 assert.match(read('src/components/SavesTab.tsx'), /Scan again/, 'rescan existing photos');
+assert.match(read('src/components/SavesTab.tsx'), /handwritten/, 'saves copy mentions handwriting');
 
 const pkg = JSON.parse(read('package.json'));
 for (const script of [

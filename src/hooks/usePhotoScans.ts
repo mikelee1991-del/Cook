@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { SortedClip } from '../lib/recipeSort';
 import { PHOTO_SCANS_KEY } from '../lib/appStorage';
-import { scanImagesForRecipes } from '../lib/scanImages';
+import { scanImagesForRecipesDetailed } from '../lib/scanImages';
 import { uid } from '../lib/pantryUtils';
 
 export type ScanStatus = 'scanning' | 'done' | 'error';
@@ -13,8 +13,12 @@ export interface PhotoScan {
   clips: SortedClip[];
   progress: string;
   error?: string;
+  warnings?: string[];
   createdAt: string;
 }
+
+/** Original Files/Blobs for rescan in this session (too large for localStorage). */
+const originalSources = new Map<string, Array<string | Blob>>();
 
 function loadScans(): PhotoScan[] {
   try {
@@ -45,6 +49,7 @@ export function usePhotoScans() {
   }, [scans]);
 
   const removeScan = useCallback((id: string) => {
+    originalSources.delete(id);
     setScans((prev) => prev.filter((s) => s.id !== id));
   }, []);
 
@@ -89,13 +94,24 @@ export function usePhotoScans() {
   );
 
   const runOcr = useCallback(async (id: string, sources: Array<string | Blob>) => {
+    originalSources.set(id, sources);
     try {
-      const clips = await scanImagesForRecipes(sources, (progress) => {
+      const { clips, warnings } = await scanImagesForRecipesDetailed(sources, (progress) => {
         setScans((prev) => prev.map((s) => (s.id === id ? { ...s, progress } : s)));
       });
+      const warningText = warnings.map((w) => `Page ${w.page}: ${w.message}`);
       setScans((prev) =>
         prev.map((s) =>
-          s.id === id ? { ...s, status: 'done', clips, error: undefined, progress: 'Done' } : s,
+          s.id === id
+            ? {
+                ...s,
+                status: 'done',
+                clips,
+                error: clips.length ? undefined : warningText[0],
+                warnings: warningText,
+                progress: 'Done',
+              }
+            : s,
         ),
       );
       return id;
@@ -121,7 +137,9 @@ export function usePhotoScans() {
         images: displayImages,
         status: 'scanning',
         clips: [],
-        progress: 'Starting…',
+                progress: originalSources.has(id)
+                  ? 'Starting…'
+                  : 'Starting from stored preview…',
         createdAt,
       };
       setScans((prev) => [draft, ...prev]);
@@ -134,14 +152,15 @@ export function usePhotoScans() {
     async (id: string) => {
       const scan = scans.find((s) => s.id === id);
       if (!scan?.images.length) return null;
+      const sources = originalSources.get(id) ?? scan.images;
       setScans((prev) =>
         prev.map((s) =>
           s.id === id
-            ? { ...s, status: 'scanning', clips: [], error: undefined, progress: 'Starting…' }
+            ? { ...s, status: 'scanning', clips: [], error: undefined, warnings: [], progress: 'Starting…' }
             : s,
         ),
       );
-      return runOcr(id, scan.images);
+      return runOcr(id, sources);
     },
     [runOcr, scans],
   );

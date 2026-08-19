@@ -11,12 +11,15 @@ export interface SortedClip {
 }
 
 const RECIPE_HINTS =
-  /\b(ingredients?|directions?|instructions?|method|preparation|preheat|bake|roast|simmer|whisk|tablespoons?|teaspoons?|tbsp|tsp|cups?|serves?|servings?|minutes?|oven|°[cf]|degrees)\b/i;
+  /\b(ingredients?|ingredlents|lngredients|directions?|directlons|instructions?|instructlons|method|preparation|preheat|prebeat|bake|roast|simmer|whisk|tablespoons?|teaspoons?|tbsp|tsp|cups?|serves?|servings?|minutes?|oven|°[cf]|degrees)\b/i;
 
 const MEASURE =
-  /\b(\d+\/\d+|\d+(\.\d+)?)\s?(cups?|tbsp|tsp|tablespoons?|teaspoons?|oz|ounces?|lb|lbs|pounds?|g|kg|ml|l|cloves?|cans?|sticks?)\b/i;
+  /\b(\d+\/\d+|\d+(\.\d+)?)\s?(cups?|c\.|c|tbsp|tsp|tablespoons?|teaspoons?|oz|ounces?|lb|lbs|pounds?|g|kg|ml|l|cloves?|cans?|sticks?)\b/i;
 
-const STEP_LINE = /^\s*(\d+[).]|step\s*\d+|•|-)\s+/i;
+const STEP_LINE = /^\s*(\d+[).]|[lI][).]|step\s*\d+|•|-)\s+/i;
+
+const SECTION_HEADER =
+  /^(ingredients?|ingredlents|lngredients|directions?|directlons|instructions?|instructlons|method|notes?|serves?)\b/i;
 
 function clipId(prefix: string, n: number): string {
   return `${prefix}-${n}-${Math.random().toString(36).slice(2, 7)}`;
@@ -30,9 +33,13 @@ function scoreRecipeLikelihood(text: string): number {
   if (RECIPE_HINTS.test(text)) score += 0.35;
   const measureHits = lines.filter((l) => MEASURE.test(l)).length;
   score += Math.min(0.35, measureHits * 0.07);
+  if (measureHits >= 2) score += 0.12;
   const stepHits = lines.filter((l) => STEP_LINE.test(l)).length;
   score += Math.min(0.2, stepHits * 0.05);
-  if (/\bingredients?\b/i.test(text) && /\b(directions?|instructions?|method)\b/i.test(text)) {
+  if (
+    /\b(ingredients?|ingredlents|lngredients)\b/i.test(text) &&
+    /\b(directions?|directlons|instructions?|instructlons|method)\b/i.test(text)
+  ) {
     score += 0.2;
   }
   return Math.max(0, Math.min(1, score));
@@ -46,7 +53,7 @@ function titleFromBlock(text: string): string {
       l.length < 80 &&
       !MEASURE.test(l) &&
       !STEP_LINE.test(l) &&
-      !/^(ingredients?|directions?|instructions?|method)\b/i.test(l),
+      !SECTION_HEADER.test(l),
   );
   return heading || lines[0]?.slice(0, 72) || 'Untitled clip';
 }
@@ -66,7 +73,7 @@ export function sortPageText(ocrText: string, sourceImageIndex: number): SortedC
     const body = block.trim();
     if (body.length < 12) return;
     const confidence = scoreRecipeLikelihood(body);
-    const kind: ClipKind = confidence >= 0.42 ? 'recipe' : 'other';
+    const kind: ClipKind = confidence >= 0.38 ? 'recipe' : 'other';
     clips.push({
       id: clipId(`img${sourceImageIndex}`, i),
       kind,
@@ -133,7 +140,7 @@ function isRecipeFragment(block: string): boolean {
   const t = block.trim();
   if (!t) return false;
   if (MEASURE.test(t) || STEP_LINE.test(t)) return true;
-  if (/^(ingredients?|directions?|instructions?|method|notes?|serves?)\b/i.test(t)) return true;
+  if (SECTION_HEADER.test(t)) return true;
   return RECIPE_HINTS.test(t) && t.length < 90;
 }
 
@@ -142,7 +149,7 @@ function coalesceRecipeFragments(blocks: string[]): string[] {
   const out: string[] = [];
   for (const block of blocks) {
     const prev = out[out.length - 1];
-    const prevShort = Boolean(prev && prev.length < 1800 && prev.split('\n').length < 40);
+    const prevShort = Boolean(prev && prev.length < 2200 && prev.split('\n').length < 55);
     if (prev && prevShort && isRecipeFragment(block)) {
       out[out.length - 1] = `${prev}\n${block}`;
     } else {
@@ -161,7 +168,7 @@ function splitByTitleLines(text: string): string[] {
     const t = line.trim();
     if (t.length < 4 || t.length > 60) return false;
     if (MEASURE.test(t) || STEP_LINE.test(t)) return false;
-    if (/^(ingredients?|directions?|instructions?|method|notes?)\b/i.test(t)) return false;
+    if (SECTION_HEADER.test(t)) return false;
     const letters = t.replace(/[^a-zA-Z]/g, '');
     if (letters.length < 4) return false;
     const caps = letters.replace(/[^A-Z]/g, '').length;
