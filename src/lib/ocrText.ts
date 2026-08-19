@@ -96,7 +96,7 @@ export function scoreOcrResult(text: string, confidence: number): number {
   score += Math.min(12, digits * 0.7);
   score -= junkRatio * 45;
   if (RECIPE_TERMS.test(cleaned)) score += 14;
-  if (/\b(\d+\/\d+|\d+)\s?(cups?|tbsp|tsp|oz|lb)\b/i.test(cleaned)) score += 8;
+  if (/\b(\d+\/\d+|\d+)\s?(cups?|tbsp|tsp|oz|lb|gallon|package|can)\b/i.test(cleaned)) score += 8;
   if (letters < 20) score -= 22;
   if (words.length < 4) score -= 10;
   return Math.max(0, Math.min(100, score));
@@ -112,8 +112,8 @@ export function ocrTextLooksWeak(text: string, confidence: number): boolean {
 
 function fixCommonGlyphs(line: string): string {
   return line
-    .replace(/\b(tosp|tbso|tbs|tbi)\b/gi, 'tbsp')
-    .replace(/\b(tspn|tso)\b/gi, 'tsp')
+    .replace(/\b(tosp|tbso|tbs\.?|tbi|tbl)\b/gi, 'tbsp')
+    .replace(/\b(tspn|tso|tsp\.)\b/gi, 'tsp')
     .replace(/\b(cujp|cupS)\b/g, 'cup')
     .replace(/\b0z\b/g, 'oz')
     .replace(/\blb[s5]\b/gi, 'lbs')
@@ -156,4 +156,53 @@ export function cleanupOcrText(raw: string): string {
     .join('\n');
   text = text.replace(/\n{3,}/g, '\n\n');
   return text.trim();
+}
+
+const CHROME_LINE =
+  /^(recipe for|paid for by|harris victory fund|enjoy and share|hallmark cards|the cambridge school|www\.|page\s*\d+|updated\s+\d|©|x:\s*@|instagram:|arctic seafoods$)/i;
+
+/** Drop page furniture that is not part of the recipe. */
+export function stripScanChrome(text: string): string {
+  return text
+    .split('\n')
+    .filter((line) => {
+      const t = line.trim();
+      if (!t) return true;
+      if (CHROME_LINE.test(t)) return false;
+      if (/^paid for by\b/i.test(t)) return false;
+      return true;
+    })
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+/**
+ * Cookbook photos often include the last paragraph of the previous recipe.
+ * Drop leading instruction sentences until a title / Ingredients header.
+ */
+export function dropLeadingOrphanCopy(text: string): string {
+  const lines = text.split('\n');
+  const startVerb =
+    /^(remove|return|allow|serve|loosely|when|while|continue|tent|slice|cook until|mix half)\b/i;
+  let firstContent = 0;
+  while (firstContent < lines.length && !lines[firstContent].trim()) firstContent += 1;
+  if (firstContent >= lines.length) return text;
+  if (!startVerb.test(lines[firstContent].trim())) return text;
+
+  for (let i = firstContent + 1; i < lines.length; i++) {
+    const t = lines[i].trim();
+    if (!t) continue;
+    const letters = t.replace(/[^A-Za-z]/g, '');
+    const caps = letters.replace(/[^A-Z]/g, '').length;
+    const titleish =
+      t.length >= 4 &&
+      t.length <= 72 &&
+      !/^\d/.test(t) &&
+      !startVerb.test(t) &&
+      (caps / Math.max(letters.length, 1) >= 0.45 || /^[A-Z][a-z].+/.test(t));
+    const header = /^(ingredients?|directions?|instructions?|method)\b/i.test(t);
+    if (titleish || header) return lines.slice(i).join('\n').trim();
+  }
+  return text;
 }

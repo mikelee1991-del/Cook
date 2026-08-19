@@ -1,6 +1,7 @@
 import { createWorker, OEM, PSM } from 'tesseract.js';
-import { prepareOcrPage, type OcrVariant } from './ocrPreprocess';
-import { cleanupOcrText, ocrTextLooksStrong, scoreOcrResult } from './ocrText';
+import { rasterizeToCanvas, rotateCanvas } from './imageRaster';
+import { prepareOcrCanvas, type OcrVariant } from './ocrPreprocess';
+import { cleanupOcrText, ocrTextLooksStrong, ocrTextLooksWeak, scoreOcrResult } from './ocrText';
 import { orderClipsForDisplay, sortPageText, type SortedClip } from './recipeSort';
 
 type OcrSource = string | Blob;
@@ -87,9 +88,9 @@ async function readSlices(
 
 async function readPageBestEffort(
   worker: Awaited<ReturnType<typeof createWorker>>,
-  prep: Awaited<ReturnType<typeof prepareOcrPage>>,
+  prep: Awaited<ReturnType<typeof prepareOcrCanvas>>,
   onProgress?: (message: string) => void,
-): Promise<string> {
+): Promise<OcrAttempt> {
   let best: OcrAttempt = { text: '', confidence: 0, score: -1 };
   const ordered: OcrVariant[] =
     prep.density === 'sparse'
@@ -114,10 +115,10 @@ async function readPageBestEffort(
     );
     if (attempt.score > best.score) best = attempt;
     if (ocrTextLooksStrong(attempt.text, attempt.confidence) && attempt.score >= 64) {
-      return best.text;
+      return best;
     }
   }
-  return best.text;
+  return best;
 }
 
 export interface ScanPageWarning {
@@ -155,10 +156,21 @@ export async function scanImagesForRecipesDetailed(
     for (let i = 0; i < images.length; i++) {
       onProgress?.(`Preparing page ${i + 1} of ${images.length}…`);
       try {
-        const prep = await prepareOcrPage(images[i]);
-        const text = await readPageBestEffort(worker, prep, (msg) => {
+        const raw = await rasterizeToCanvas(images[i]);
+        let prep = prepareOcrCanvas(raw);
+        let best = await readPageBestEffort(worker, prep, (msg) => {
           onProgress?.(`Page ${i + 1} of ${images.length}: ${msg}`);
         });
+        if (ocrTextLooksWeak(best.text, best.confidence) || best.score < 48) {
+          for (const deg of [90, 270, 180] as const) {
+            onProgress?.(`Page ${i + 1} of ${images.length}: Trying a ${deg}° rotation…`);
+            const rotated = prepareOcrCanvas(rotateCanvas(raw, deg));
+            const attempt = await readPageBestEffort(worker, rotated);
+            if (attempt.score > best.score) best = attempt;
+            if (ocrTextLooksStrong(best.text, best.confidence) && best.score >= 64) break;
+          }
+        }
+        const text = best.text;
         if (!text.trim()) {
           warnings.push({
             page: i + 1,

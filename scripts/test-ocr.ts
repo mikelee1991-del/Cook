@@ -5,12 +5,14 @@
 import assert from 'node:assert/strict';
 import {
   cleanupOcrText,
+  dropLeadingOrphanCopy,
   findColumnGutter,
   ocrTextLooksStrong,
   ocrTextLooksWeak,
   pageDensityFromInk,
   pageLooksDark,
   scoreOcrResult,
+  stripScanChrome,
 } from '../src/lib/ocrText.ts';
 import { isHeicLike, isLikelyImageFile, isLikelyVideoFile } from '../src/lib/imageFiles.ts';
 import { formatReadableRecipe } from '../src/lib/recipeFormat.ts';
@@ -367,5 +369,250 @@ assert.ok(orphan.some((c) => /Pasta Salad/.test(c.title)), JSON.stringify(orphan
 console.log('→ empty / junk input stays safe');
 assert.equal(formatReadableRecipe('').body, '');
 assert.ok(formatReadableRecipe('asdf').body.length >= 4);
+
+console.log('→ example: rotated cider card (quantity then name, Preparation + Instructions)');
+const cider = formatReadableRecipe(
+  cleanupOcrText(`Spiced Apple Cider
+Ingredients
+12 SERVINGS
+1 gallon
+apple cider, preferably fresh (the darker the better)
+1 tablespoon whole allspice
+1 teaspoon freshly grated nutmeg
+4 cloves whole cloves
+3 cinnamon sticks
+1 vanilla bean, split lengthwise
+Brandy, Calvados (apple brandy), or bourbon (optional)
+Preparation
+Instructions
+1. Combine cider, allspice, nutmeg, cloves, and cinnamon sticks in a large pot. Scrape in seeds from vanilla bean; add bean. Bring spiced cider just to a simmer over medium heat. Reduce heat to medium-low and cook just below a simmer until flavors meld, about 1 hour.
+2. Strain cider through a sieve into another pot or heatproof punch bowl; discard solids in sieve. Add brandy to taste, if using. Ladle hot spiced cider into cups.`),
+);
+assert.match(cider.title, /Spiced Apple Cider/);
+assert.ok(cider.ingredients.some((i) => /1 gallon apple cider/.test(i)), JSON.stringify(cider.ingredients));
+assert.ok(cider.ingredients.some((i) => /optional/i.test(i)), JSON.stringify(cider.ingredients));
+assert.ok(cider.directions.some((d) => /Combine cider/.test(d)), JSON.stringify(cider.directions));
+assert.ok(cider.directions.some((d) => /Strain cider/.test(d)), JSON.stringify(cider.directions));
+assert.match(cider.body, /12 SERVINGS|servings/i);
+
+console.log('→ example: crab card with colored subhead and intro blurb');
+const crab = sortPageText(
+  `Red King Crab with Thai Chile Lime Dipping Sauce
+Arctic Seafoods
+While red king crab is delicious served simply with lemon and melted butter, Thai Chile Lime Dipping Sauce is a flavorful, healthy alternative.
+DIPPING SAUCE
+4 medium garlic cloves, minced
+4 Tbsp fresh lime juice
+1 tsp fish sauce
+1 Tbsp light brown sugar
+2 to 4 red Thai chiles, finely minced (or 1 tsp red pepper flakes)
+2 Tbsp green onion, finely chopped
+2 Tbsp cilantro, finely chopped
+1 to 2 lb precooked red king crab legs
+Prepare the dipping sauce: Combine sauce ingredients in a small bowl and stir until sugar is dissolved. Serve with red king crab.
+Makes 2 servings.`,
+  0,
+).filter((c) => c.kind === 'recipe');
+assert.equal(crab.length, 1, JSON.stringify(crab.map((c) => c.title)));
+assert.match(crab[0].title, /Red King Crab/);
+assert.match(crab[0].body, /lime juice/);
+assert.match(crab[0].body, /king crab legs/);
+assert.doesNotMatch(crab[0].title, /DIPPING SAUCE/);
+
+console.log('→ example: handwritten two-column banana bread card');
+const banana = formatReadableRecipe(
+  stripScanChrome(`Recipe For
+Banana Nut Bread
+1 1/2 cups flour 3/4 cup oil
+3/4 tsp. soda 3 tbs. buttermilk
+1/4 tsp. salt 2-3 bananas (about 1 cup)
+1 cup sugar 1/2 cup chopped nuts
+2 eggs, lightly beaten
+Preheat oven to 325° F. Grease and flour loaf pan. Sift together flour, soda + salt. Add sugar, eggs, oil + buttermilk; stir to blend. Fold in bananas + nuts. Pour into pan. Bake for about 1 hour.
+© HALLMARK CARDS, INC.`),
+);
+assert.equal(banana.title, 'Banana Nut Bread');
+assert.ok(banana.ingredients.some((i) => /flour/.test(i)), JSON.stringify(banana.ingredients));
+assert.ok(banana.ingredients.some((i) => /oil/.test(i)), JSON.stringify(banana.ingredients));
+assert.ok(banana.directions.some((d) => /Preheat oven/.test(d)), JSON.stringify(banana.directions));
+assert.doesNotMatch(banana.body, /HALLMARK/i);
+
+console.log('→ example: ingredients-only cursive card still counts as a recipe');
+const mushrooms = sortPageText(
+  `Bourbon Mushrooms
+1/4 cup butter
+1/4 cup olive oil
+2 lbs. assorted mushrooms
+3/4 tsp salt
+1/4 tsp pepper
+1/2 cup Bourbon or chicken broth
+3 garlic cloves, minced
+2 Tbs chopped parsley
+1 Tbs fresh chopped thyme`,
+  0,
+).filter((c) => c.kind === 'recipe');
+assert.ok(mushrooms.length >= 1, JSON.stringify(mushrooms));
+assert.match(mushrooms[0].title, /Bourbon Mushrooms/);
+assert.match(mushrooms[0].body, /butter/);
+assert.match(mushrooms[0].body, /thyme/);
+
+console.log('→ example: leftover previous recipe is dropped; salsa keeps its title');
+const salsaPage = dropLeadingOrphanCopy(`Remove the beef from the marinade and cook 3-4 minutes, turn, then cook more or until rare. Allow the meat to rest for 5-10 minutes and then slice across the grain. Serve with remaining salsa.
+
+Fresh tomato salsa
+2 pounds vine ripened tomatoes
+2 jalapeno chiles
+1/2 medium red onion, very finely chopped then soaked in cold water
+1/2 cup fresh cilantro sprigs, roughly chopped
+1 clove garlic, minced to a paste
+2 teaspoons fresh lime juice
+Salt and pepper to taste
+Extra virgin olive oil to taste
+Quarter and seed tomatoes. Cut tomatoes into 1/4 inch dice. Wearing rubber gloves, seed and finely chop the jalapeno peppers. Combine onion, garlic, cilantro and lime juice with the tomatoes and stir.`);
+assert.match(salsaPage, /^Fresh tomato salsa/m);
+assert.doesNotMatch(salsaPage, /Remove the beef/);
+const salsa = formatReadableRecipe(salsaPage);
+assert.match(salsa.title, /Fresh tomato salsa/i);
+assert.ok(salsa.ingredients.some((i) => /tomatoes/.test(i)));
+assert.ok(salsa.directions.length >= 1, JSON.stringify(salsa.directions));
+
+console.log('→ example: two-column hotdish graphic');
+const hotdish = formatReadableRecipe(
+  stripScanChrome(`TIM WALZ'S HOTDISH
+Ingredients
+1 Package brats
+1 Bottle beer
+1 Onion
+1 Teaspoon garlic powder
+1 Cup chopped celery
+1 Can cream of cheddar soup
+1 Can cream of mushroom soup
+1/2 Cup milk
+1 Cup sharp cheddar cheese
+1 Package tater tots
+Directions
+Bring a pot of water to a boil.
+Add beer, onions, and garlic powder.
+Submerge brats into the pot, reduce heat to medium, and cook for 10 minutes.
+Remove and let cool.
+Butter the casserole dish.
+Combine remaining ingredients (minus the tots!) into a separate bowl.
+Chop up the brats into bite-sized pieces and add to the other ingredients.
+Pour the mixture into the casserole dish, top with tater tots, and bake for one hour at 350°.
+Sprinkle with cheese for the last 10 to 15 minutes of baking.
+ENJOY AND SHARE WITH TIM ON SOCIAL MEDIA!
+X: @Tim_Walz | Instagram: @timwalz
+HARRIS VICTORY FUND
+PAID FOR BY HARRIS VICTORY FUND`),
+);
+assert.match(hotdish.title, /HOTDISH/i);
+assert.ok(hotdish.ingredients.some((i) => /brats/i.test(i)), JSON.stringify(hotdish.ingredients));
+assert.ok(hotdish.ingredients.some((i) => /tater tots/i.test(i)), JSON.stringify(hotdish.ingredients));
+assert.ok(hotdish.directions.some((d) => /Bring a pot/.test(d)), JSON.stringify(hotdish.directions));
+assert.ok(hotdish.directions.some((d) => /tater tots/i.test(d)), JSON.stringify(hotdish.directions));
+assert.doesNotMatch(hotdish.body, /PAID FOR/i);
+
+console.log('→ example: two recipes on one page after leftover pork copy');
+const twoOnPage = sortPageText(
+  dropLeadingOrphanCopy(`Return the pork to the oven and continue to cook until an internal temperature of 135 degrees is reached. Loosely tent the roast with foil, and allow it to rest 10 minutes before carving into 1/2 inch slices.
+
+Fennel and Fruit Compote
+1 fennel bulb
+1 cup chopped dried prunes (or other dried fruits)
+1/2 cup Marsala (optional)
+2 tablespoons unsalted butter
+2 tablespoons extra virgin olive oil
+3/4 cup onion, finely chopped
+1 tablespoon spice rub (above), to taste
+Trim stalks off of fennel bulb, remove bruised outer leaves, and rinse. Cut bulb in half or quarters and remove core. Chop finely.
+In a saucepan, reconstitute dried fruit by adding fruit and Marsala (optional) to pan and just enough water to cover. Bring to a boil and simmer on stovetop for a few minutes until tender.
+
+DIABLO SKIRT STEAK
+3 tablespoons extra virgin olive oil
+3 tablespoons cider vinegar
+2 teaspoons fresh oregano, chopped
+1 1/2 tablespoon sugar
+1 1/2 teaspoon salt
+2 lbs. skirt or hanger steak
+Fresh tomato salsa (recipe follows)
+In a small bowl whisk together the olive oil, cider vinegar, oregano, sugar, and salt. Transfer to a plastic bag; add the steak and marinate 30 minutes or up to 4 hours.
+Roberta L. Dowling © 2003
+updated 03/21/12
+page 3`),
+  0,
+).filter((c) => c.kind === 'recipe');
+assert.ok(twoOnPage.length >= 2, JSON.stringify(twoOnPage.map((c) => c.title)));
+assert.ok(twoOnPage.some((c) => /Fennel/.test(c.title)), JSON.stringify(twoOnPage.map((c) => c.title)));
+assert.ok(twoOnPage.some((c) => /DIABLO|Skirt/i.test(c.title)), JSON.stringify(twoOnPage.map((c) => c.title)));
+assert.ok(!twoOnPage.some((c) => /Return the pork/.test(c.body)));
+
+console.log('→ example: ginger snaps with coating subhead and Step labels');
+const snaps = formatReadableRecipe(
+  `GWEN WALZ'S GINGER SNAP COOKIES
+Her great grandmother's recipe. Perfect for a cold fall evening.
+Yield: 4 dozen small cookies
+Ingredients
+2 cup unbleached all-purpose flour
+1/4 tsp salt
+2 tsp baking soda
+1 tsp ground ginger
+1 tsp ground cloves (I skip this!)
+1 tsp ground cinnamon
+3/4 cup vegetable shortening
+1 cup sugar
+1 large egg
+1/4 cup molasses
+Coating:
+1/4 cup white sugar
+1 tsp ground cinnamon
+Directions
+Step 1
+Preheat oven to 350°F. Line baking sheets with parchment.
+Step 2
+In a separate bowl, combine flour, salt, baking soda, and spices.
+Step 3
+In a stand mixer, cream shortening and sugar until fluffy. Beat in egg, then molasses.
+Step 4
+Slowly beat in the flour and spice mixture. Dough will be tacky but stiff.
+Step 5
+Scoop 1" dough into balls and drop in cinnamon sugar mixture.
+Step 6
+Bake for about 10-12 minutes, rotating trays halfway.
+Step 7
+Allow to cool. Store in an airtight container.`,
+);
+assert.match(snaps.title, /GINGER SNAP/i);
+assert.ok(snaps.ingredients.some((i) => /molasses/.test(i)));
+assert.ok(snaps.ingredients.some((i) => /white sugar/.test(i)));
+assert.ok(snaps.directions.some((d) => /Preheat oven/.test(d)), JSON.stringify(snaps.directions));
+assert.ok(snaps.directions.length >= 5, JSON.stringify(snaps.directions));
+
+console.log('→ example: photo card with ingredients left / directions right');
+const dressing = formatReadableRecipe(
+  `Kamala's Cornbread Dressing Recipe
+Ingredients
+2 - 8 oz packages of cornbread mix
+1 lb spicy pork sausage
+2 onions, chopped
+2 apples, cored and chopped
+4 celery stalks, diced
+3/4 cup chicken broth
+1/4 cup unsalted butter, melted
+1/4 cup fresh parsley, chopped
+2 tsp sage
+1/2 tsp thyme
+1/2 tsp rosemary
+salt and pepper to taste
+Directions
+Step 1 Bake your cornbread according to the instructions on the package.
+Step 2 Take the sausage out of its casing, crumble it, and brown it in a little oil.
+Step 3 Sauté the vegetables and apples in the remaining oil in the same pan.
+Step 4 Mix that with the sausage, cornbread crumbs, melted butter, herbs, and chicken broth.
+Step 5 Put the mixture in a baking dish and bake at 375°F for about 40 minutes.`,
+);
+assert.match(dressing.title, /Cornbread Dressing/i);
+assert.ok(dressing.ingredients.some((i) => /sausage/.test(i)));
+assert.ok(dressing.directions.some((d) => /Bake your cornbread/.test(d)), JSON.stringify(dressing.directions));
+assert.equal(dressing.directions.length, 5, JSON.stringify(dressing.directions));
 
 console.log('test-ocr: ok');

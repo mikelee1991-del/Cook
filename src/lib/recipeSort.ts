@@ -1,4 +1,5 @@
 import { formatRecipeClipBody } from './recipeFormat';
+import { dropLeadingOrphanCopy, stripScanChrome } from './ocrText';
 
 export type ClipKind = 'recipe' | 'other';
 
@@ -16,12 +17,15 @@ const RECIPE_HINTS =
   /\b(ingredients?|ingredlents|lngredients|directions?|directlons|instructions?|instructlons|method|preparation|preheat|prebeat|bake|roast|simmer|whisk|tablespoons?|teaspoons?|tbsp|tsp|cups?|serves?|servings?|minutes?|oven|°[cf]|degrees)\b/i;
 
 const MEASURE =
-  /\b(\d+\/\d+|\d+(\.\d+)?)\s?(cups?|c\.|c|tbsp|tsp|tablespoons?|teaspoons?|oz|ounces?|lb|lbs|pounds?|g|kg|ml|l|cloves?|cans?|sticks?)\b/i;
+  /\b(\d+\/\d+|\d+(\.\d+)?)\s?(cups?|c\.|c|tbsp|tsp|tbs\.?|tablespoons?|teaspoons?|oz|ounces?|lb|lbs\.?|pounds?|g|kg|ml|l|cloves?|cans?|sticks?|gallon|packages?|bottle)\b/i;
 
 const STEP_LINE = /^\s*(\d+[).]|[lI][).]|step\s*\d+|•|-)\s+/i;
 
 const SECTION_HEADER =
-  /^(ingredients?|ingredlents|lngredients|directions?|directlons|instructions?|instructlons|method|notes?|serves?)\b/i;
+  /^(ingredients?|ingredlents|lngredients|directions?|directlons|instructions?|instructlons|method|preparation|notes?|serves?)\b/i;
+
+const COMPONENT_HEAD =
+  /^(dipping sauce|coating|frosting|marinade|sauce|garnish|filling|for the\b)/i;
 
 function clipId(prefix: string, n: number): string {
   return `${prefix}-${n}-${Math.random().toString(36).slice(2, 7)}`;
@@ -65,7 +69,7 @@ function titleFromBlock(text: string): string {
  * Multiple recipes on one page become separate recipe clips.
  */
 export function sortPageText(ocrText: string, sourceImageIndex: number): SortedClip[] {
-  const cleaned = ocrText.replace(/\r/g, '').trim();
+  const cleaned = dropLeadingOrphanCopy(stripScanChrome(ocrText.replace(/\r/g, ''))).trim();
   if (!cleaned) return [];
 
   const rawBlocks = coalesceRecipeFragments(splitIntoBlocks(cleaned));
@@ -146,12 +150,13 @@ function splitIntoBlocks(text: string): string[] {
 
   blocks = expanded;
 
-  // If still one huge block, split on lines that look like new titles (short Title Case lines)
-  if (blocks.length === 1 && blocks[0].split(/\n/).length > 25) {
+  if (blocks.length === 1 && blocks[0].split(/\n/).length > 12) {
     blocks = splitByTitleLines(blocks[0]);
   }
 
-  return blocks;
+  return blocks.flatMap((block) =>
+    block.split(/\n/).length > 14 ? splitByTitleLines(block) : [block],
+  );
 }
 
 const QUANTITY_LINE = /^\s*\d+([/.]\d+)?\s+[A-Za-z]/;
@@ -163,11 +168,32 @@ function looksLikeNewRecipe(block: string): boolean {
     .map((l) => l.trim())
     .filter(Boolean);
   if (lines.length < 2) return false;
+  if (COMPONENT_HEAD.test(lines[0])) return false;
   if (/^[A-Z][A-Za-z].{1,50}$/.test(lines[0]) && SECTION_HEADER.test(lines[1])) return true;
   if (/^[A-Z][A-Za-z].{1,50}$/.test(lines[0]) && /\bingredients?\b/i.test(block) && MEASURE.test(block)) {
     return true;
   }
+  // Second recipe on a page often has no Ingredients header — just a title then quantities.
+  if (
+    isHeadingLine(lines[0]) &&
+    QUANTITY_LINE.test(lines[1]) &&
+    lines.filter((l) => MEASURE.test(l) || QUANTITY_LINE.test(l)).length >= 2
+  ) {
+    return true;
+  }
   return false;
+}
+
+function isHeadingLine(line: string): boolean {
+  const t = line.trim();
+  if (t.length < 4 || t.length > 72) return false;
+  if (MEASURE.test(t) || STEP_LINE.test(t) || SECTION_HEADER.test(t) || COMPONENT_HEAD.test(t)) {
+    return false;
+  }
+  const letters = t.replace(/[^a-zA-Z]/g, '');
+  if (letters.length < 4) return false;
+  const caps = letters.replace(/[^A-Z]/g, '').length;
+  return caps / letters.length >= 0.45 || /^[A-Z][a-z].+[a-z]$/.test(t);
 }
 
 function isRecipeFragment(block: string): boolean {
@@ -215,23 +241,24 @@ function splitByTitleLines(text: string): string[] {
   let current: string[] = [];
 
   const isTitleLine = (line: string) => {
-    const t = line.trim();
-    if (t.length < 4 || t.length > 60) return false;
-    if (MEASURE.test(t) || STEP_LINE.test(t)) return false;
-    if (SECTION_HEADER.test(t)) return false;
-    const letters = t.replace(/[^a-zA-Z]/g, '');
-    if (letters.length < 4) return false;
-    const caps = letters.replace(/[^A-Z]/g, '').length;
-    return caps / letters.length >= 0.45 || /^[A-Z][a-z].+[a-z]$/.test(t);
+    if (COMPONENT_HEAD.test(line.trim())) return false;
+    return isHeadingLine(line);
   };
 
   for (const line of lines) {
     if (isTitleLine(line) && current.length > 6) {
-      chunks.push(current.join('\n').trim());
-      current = [line];
-    } else {
-      current.push(line);
+      const soFar = current.join('\n');
+      const hadCookSteps =
+        /\b(directions?|instructions?|method|preparation|step\s*\d)\b/i.test(soFar) ||
+        current.filter((l) => STEP_LINE.test(l)).length >= 1 ||
+        current.join(' ').length > 280;
+      if (hadCookSteps) {
+        chunks.push(current.join('\n').trim());
+        current = [line];
+        continue;
+      }
     }
+    current.push(line);
   }
   if (current.length) chunks.push(current.join('\n').trim());
   return chunks.filter((c) => c.length > 12);
