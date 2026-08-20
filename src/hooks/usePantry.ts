@@ -36,6 +36,7 @@ export function usePantry() {
       expiresAt: string;
       frozen?: boolean;
       fromCatalog?: CatalogItem;
+      fromMediaScan?: boolean;
     }) => {
       const frozen = input.frozen ?? input.section === 'frozen';
       const item: PantryItem = {
@@ -47,6 +48,7 @@ export function usePantry() {
         purchasedAt: todayISO(),
         expiresAt: input.expiresAt,
         fromPurchaseHistory: false,
+        fromMediaScan: Boolean(input.fromMediaScan),
         frozen,
         updatedAt: Date.now(),
       };

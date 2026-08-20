@@ -184,7 +184,7 @@ export default function App() {
           onSyncNow={() => void sync.syncNow()}
         />
         <p>
-          Recipe page scans sort recipes vs other text automatically — keep or discard each clip.
+          Recipe page scans use AI to read the whole card or page — keep or discard each clip.
         </p>
         <p className="footer__tools">
           <button type="button" className="footer__reset" onClick={hardResetApp}>

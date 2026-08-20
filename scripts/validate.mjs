@@ -25,6 +25,7 @@ run('lint', 'npm', ['run', 'lint']);
 run('recommend tests', 'npm', ['run', 'test:recommend']);
 run('cook tests', 'npm', ['run', 'test:cook']);
 run('ocr tests', 'npm', ['run', 'test:ocr']);
+run('vision tests', 'npm', ['run', 'test:vision']);
 run('sync tests', 'npm', ['run', 'test:sync']);
 run('build', 'npm', ['run', 'build']);
 
@@ -75,17 +76,13 @@ assert.match(read('src/components/PantryTab.tsx'), /canBeFrozen/, 'conditional f
 assert.match(read('src/components/PantryTab.tsx'), /canToggleFrozen/, 'freeze toggle hidden for staples');
 assert.match(read('src/components/RecommendedIngredients.tsx'), /Frozen/, 'frozen toggle on recommended add');
 
-assert.match(read('src/lib/ocrPreprocess.ts'), /prepareOcrPage/, 'OCR preprocess wired');
-assert.match(read('src/hooks/useDinnerSync.ts'), /mergeSnapshots/, 'cross-device snapshot merge');
-assert.match(read('src/components/DevicesPanel.tsx'), /Copy device link/, 'device share link');
-assert.match(read('src/lib/dinnerSyncApi.ts'), /ntfy\.sh/, 'default cross-device mailbox');
-assert.match(read('sync-worker/worker.js'), /\/house\//, 'optional encrypted household worker');
-assert.match(read('src/lib/ocrPreprocess.ts'), /grayscaleContrast/, 'contrast stretch for recipe photos');
-assert.match(read('src/lib/ocrPreprocess.ts'), /adaptiveBinarize/, 'handwriting / uneven-light binarize');
-assert.match(read('src/lib/scanImages.ts'), /SPARSE_TEXT/, 'handwriting page segmentation');
+assert.match(read('src/lib/scanImages.ts'), /visionJson/, 'recipe scans use vision');
+assert.match(read('src/lib/scanImages.ts'), /identifyPantryPhotos/, 'pantry photos identified by vision');
+assert.match(read('src/lib/visionPantry.ts'), /bestCatalogMatch/, 'catalog matching for seen items');
+assert.match(read('src/lib/visionRecipes.ts'), /RECIPE_VISION_PROMPT/, 'recipe vision prompt');
+assert.match(read('src/components/VisionKeyField.tsx'), /Gemini API key/, 'vision key field');
 assert.match(read('src/lib/ocrText.ts'), /pageDensityFromInk/, 'sparse vs print layout');
 assert.match(read('src/lib/ocrPreprocess.ts'), /sliceRecipeLayout/, 'two-column / band layout split');
-assert.match(read('src/lib/scanImages.ts'), /rotation/, 'sideways page rotation retry');
 assert.match(read('src/lib/ocrText.ts'), /dropLeadingOrphanCopy/, 'drop leftover previous-recipe copy');
 assert.match(read('src/lib/recipeFormat.ts'), /formatReadableRecipe/, 'human-readable recipe formatter');
 assert.match(read('src/lib/recipeSort.ts'), /formatRecipeClipBody/, 'sorted clips get readable bodies');
@@ -93,6 +90,13 @@ assert.match(read('src/components/SavesTab.tsx'), /recipe__notes/, 'saved recipe
 assert.match(read('src/lib/imageFiles.ts'), /isLikelyImageFile/, 'blank MIME image sniffing');
 assert.match(read('src/components/SavesTab.tsx'), /Scan again/, 'rescan existing photos');
 assert.match(read('src/components/SavesTab.tsx'), /handwritten/, 'saves copy mentions handwriting');
+assert.match(read('src/hooks/useDinnerSync.ts'), /mergeSnapshots/, 'cross-device snapshot merge');
+assert.match(read('src/components/DevicesPanel.tsx'), /Copy device link/, 'device share link');
+assert.match(read('src/lib/dinnerSyncApi.ts'), /ntfy\.sh/, 'default cross-device mailbox');
+assert.match(read('sync-worker/worker.js'), /\/house\//, 'optional encrypted household worker');
+assert.match(read('sync-worker/worker.js'), /\/vision/, 'optional vision proxy on sync worker');
+assert.doesNotMatch(read('src/lib/scanImages.ts'), /tesseract/, 'on-device OCR removed from scans');
+assert.doesNotMatch(read('package.json'), /tesseract/, 'tesseract dependency removed');
 
 const pkg = JSON.parse(read('package.json'));
 for (const script of [
@@ -104,6 +108,7 @@ for (const script of [
   'test:recommend',
   'test:cook',
   'test:ocr',
+  'test:vision',
   'test:sync',
 ]) {
   assert.ok(pkg.scripts?.[script], `package.json missing script: ${script}`);

@@ -10,14 +10,14 @@
     "test:recommend": "tsx scripts/test-recommend.ts",
     "test:cook": "tsx scripts/test-cook.ts",
     "test:ocr": "tsx scripts/test-ocr.ts",
+    "test:vision": "tsx scripts/test-vision.ts",
     "test:sync": "tsx scripts/test-sync.ts",
     "preview": "vite preview",
     "validate": "node scripts/validate.mjs"
   },
   "dependencies": {
     "react": "^19.2.8",
-    "react-dom": "^19.2.8",
-    "tesseract.js": "^7.0.0"
+    "react-dom": "^19.2.8"
   },
   "devDependencies": {
     "@types/node": "^24.13.3",

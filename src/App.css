@@ -212,6 +212,18 @@
   margin: 0.45rem 0 0;
 }
 
+.vision-key {
+  margin-top: 0.85rem;
+}
+
+.scan-matches {
+  margin-top: 1rem;
+}
+
+.scan-matches h4 {
+  margin: 0 0 0.35rem;
+}
+
 .tab-panel {
   background: rgba(255, 255, 255, 0.55);
   border: 1px solid var(--line);
