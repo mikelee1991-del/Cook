@@ -104,7 +104,7 @@ export function RecommendedIngredients({
                   <div className="clip-card__actions">
                     {!item.inPantry && (
                       <>
-                        {canBeFrozen(pantryDraftFromName(item.name).section) && (
+                        {canBeFrozen(pantryDraftFromName(item.name).section, item.name) && (
                           <label className="toggle toggle--compact">
                             <input
                               type="checkbox"

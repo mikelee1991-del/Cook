@@ -107,7 +107,7 @@ export function PantryTab({
   const expired = filtered.filter((i) => getExpirationStatus(i.expiresAt) === 'expired');
   const soon = filtered.filter((i) => getExpirationStatus(i.expiresAt) === 'soon');
 
-  const showFrozenToggle = canBeFrozen(section);
+  const showFrozenToggle = canBeFrozen(section, name);
 
   function selectSuggestion(catalogName: string) {
     const hit = groceryCatalog.find((c) => c.name === catalogName);
