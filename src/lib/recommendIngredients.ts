@@ -15,19 +15,19 @@ export interface AutoRecommendation {
 export function recommendFromStock(
   pantry: PantryItem[],
   dismissedNames: string[] = [],
-  limit = 12,
+  limit = 24,
 ): AutoRecommendation[] {
   const dismissed = new Set(dismissedNames.map(normalizeName));
   const scores = new Map<string, { name: string; score: number; recipes: string[] }>();
 
   for (const recipe of recipes) {
     const match = matchRecipeToPantry(recipe, pantry);
-    // At least two pantry hits, and not a whole grocery run (max 5 extras).
-    if (match.have.length < 2 || match.missing.length === 0 || match.missing.length > 5) {
+    // At least one pantry hit, and not a whole grocery run (max 7 extras).
+    if (match.have.length < 1 || match.missing.length === 0 || match.missing.length > 7) {
       continue;
     }
     // Prefer recipes that need few extras
-    const weight = match.coverage * (6 - match.missing.length);
+    const weight = match.coverage * (8 - match.missing.length);
     for (const missing of match.missing) {
       const key = normalizeName(missing);
       if (!key || dismissed.has(key)) continue;
