@@ -25,7 +25,6 @@ export default function App() {
     manual: recommendedManual,
     dismissed: recommendedDismissed,
     dismissedCount,
-    addManual: addRecommended,
     updateItem: updateRecommended,
     removeItem: removeRecommended,
     clearDismissed: restoreRecommended,
@@ -151,7 +150,6 @@ export default function App() {
             onReset={resetPantry}
             onAddMedia={addMedia}
             onRemoveMedia={removeMedia}
-            onAddRecommended={addRecommended}
             onUpdateRecommended={updateRecommended}
             onRemoveRecommended={removeRecommended}
             onRestoreRecommended={restoreRecommended}

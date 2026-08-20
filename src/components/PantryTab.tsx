@@ -40,7 +40,6 @@ interface PantryTabProps {
   onReset: () => void;
   onAddMedia: (items: Omit<PantryMedia, 'id' | 'createdAt'>[]) => void;
   onRemoveMedia: (id: string) => void;
-  onAddRecommended: (name: string, note: string) => RecommendedIngredient | null;
   onUpdateRecommended: (
     item: RecommendedIngredient,
     patch: { name?: string; note?: string },
@@ -62,7 +61,6 @@ export function PantryTab({
   onReset,
   onAddMedia,
   onRemoveMedia,
-  onAddRecommended,
   onUpdateRecommended,
   onRemoveRecommended,
   onRestoreRecommended,
@@ -277,16 +275,6 @@ export function PantryTab({
         )}
       </section>
 
-      <RecommendedIngredients
-        items={recommended}
-        dismissedCount={dismissedCount}
-        onAdd={onAddRecommended}
-        onUpdate={onUpdateRecommended}
-        onRemove={onRemoveRecommended}
-        onRestoreAutos={onRestoreRecommended}
-        onAddToPantry={onAddRecommendedToPantry}
-      />
-
       <div className="pantry-toolbar pantry-toolbar--simple">
         <label className="field field--grow">
           <span className="field__label">Search pantry</span>
@@ -413,6 +401,15 @@ export function PantryTab({
           <p className="empty-state">No items match your search. Clear the filter to see everything.</p>
         )}
       </div>
+
+      <RecommendedIngredients
+        items={recommended}
+        dismissedCount={dismissedCount}
+        onUpdate={onUpdateRecommended}
+        onRemove={onRemoveRecommended}
+        onRestoreAutos={onRestoreRecommended}
+        onAddToPantry={onAddRecommendedToPantry}
+      />
 
       {lightbox && (
         <div
