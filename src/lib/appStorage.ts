@@ -4,6 +4,7 @@ export const RECOMMENDED_MANUAL_KEY = 'dinner-recommended-manual-v1';
 export const RECOMMENDED_DISMISSED_KEY = 'dinner-recommended-dismissed-v1';
 export const SAVES_KEY = 'dinner-saves-v1';
 export const PHOTO_SCANS_KEY = 'dinner-photo-scans-v1';
+export const VISION_KEY = 'dinner-vision-key-v1';
 
 export const HOUSE_KEY = 'dinner-house-v1';
 export const DEVICE_KEY = 'dinner-device-v1';
@@ -20,6 +21,7 @@ export const APP_STORAGE_KEYS = [
   HOUSE_KEY,
   DEVICE_KEY,
   SYNC_META_KEY,
+  VISION_KEY,
 ] as const;
 
 export function clearAllAppData(): void {

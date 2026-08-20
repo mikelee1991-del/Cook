@@ -6,11 +6,17 @@ import { isLikelyImageFile, isLikelyVideoFile } from '../lib/imageFiles';
 import {
   formatExpiryLabel,
   getExpirationStatus,
+  pantryHasIngredient,
   todayISO,
 } from '../lib/pantryUtils';
 import { canBeFrozen, canToggleFrozen, isFrozenItem } from '../lib/frozenHandling';
+import { pantryDraftFromName } from '../lib/pantryDraft';
+import { identifyPantryPhotos } from '../lib/scanImages';
+import { hasVisionAccess } from '../lib/visionConfig';
+import type { IdentifiedPantryItem } from '../lib/visionPantry';
 import { BulkUploadZone } from './BulkUploadZone';
 import { RecommendedIngredients } from './RecommendedIngredients';
+import { VisionKeyField } from './VisionKeyField';
 
 const MAX_VIDEO_BYTES = 12 * 1024 * 1024;
 
@@ -34,6 +40,7 @@ interface PantryTabProps {
     quantity: string;
     expiresAt: string;
     frozen?: boolean;
+    fromMediaScan?: boolean;
   }) => void;
   onRemove: (id: string) => void;
   onUpdate: (id: string, patch: Partial<PantryItem>) => void;
@@ -81,6 +88,10 @@ export function PantryTab({
   const [busyLabel, setBusyLabel] = useState('Processing…');
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [lightbox, setLightbox] = useState<string | null>(null);
+  const [foundItems, setFoundItems] = useState<IdentifiedPantryItem[]>([]);
+  const [foundSelected, setFoundSelected] = useState<Record<string, boolean>>({});
+  const [foundFrozen, setFoundFrozen] = useState<Record<string, boolean>>({});
+  const [visionReady, setVisionReady] = useState(() => hasVisionAccess());
 
   const suggestions = useMemo(() => {
     const q = name.trim().toLowerCase();
@@ -187,12 +198,54 @@ export function PantryTab({
         return;
       }
       onAddMedia(added);
-    } catch {
-      setUploadError('Could not read one or more files. Try JPG/PNG or a shorter MP4.');
+
+      const photoSources = added.filter((item) => item.kind === 'image').map((item) => item.src);
+      if (!photoSources.length) return;
+      if (!visionReady && !hasVisionAccess()) {
+        setUploadError(
+          'Photos saved. Add a Gemini API key in Devices so Dinner can identify items from packaging and produce.',
+        );
+        return;
+      }
+      const { items: found, warnings } = await identifyPantryPhotos(photoSources, setBusyLabel);
+      const fresh = found.filter((item) => !pantryHasIngredient(items, item.name));
+      if (!fresh.length) {
+        setUploadError(
+          warnings[0]
+            ? `Page ${warnings[0].page}: ${warnings[0].message}`
+            : 'Those photos match items already in your pantry.',
+        );
+        return;
+      }
+      setFoundItems(fresh);
+      setFoundSelected(Object.fromEntries(fresh.map((item) => [item.name, true])));
+      setFoundFrozen(Object.fromEntries(fresh.map((item) => [item.name, item.frozen])));
+      if (warnings.length) {
+        setUploadError(warnings.map((w) => `Photo ${w.page}: ${w.message}`).join(' '));
+      }
+    } catch (err) {
+      setUploadError(
+        err instanceof Error ? err.message : 'Could not read one or more files. Try JPG/PNG or a shorter MP4.',
+      );
     } finally {
       setBusy(false);
       setBusyLabel('Processing…');
     }
+  }
+
+  function addFoundItems(names?: string[]) {
+    const chosen = foundItems.filter((item) => (names ? names.includes(item.name) : foundSelected[item.name]));
+    for (const item of chosen) {
+      const draft = pantryDraftFromName(item.name);
+      const frozen = foundFrozen[item.name] ?? item.frozen;
+      onAdd({
+        ...draft,
+        quantity: item.quantity || draft.quantity,
+        frozen,
+        fromMediaScan: true,
+      });
+    }
+    setFoundItems((prev) => prev.filter((item) => !chosen.some((c) => c.name === item.name)));
   }
 
   return (
@@ -200,8 +253,9 @@ export function PantryTab({
       <header className="panel-intro">
         <h2>Your pantry</h2>
         <p>
-          Upload photos or videos of your shelves so items can be identified from labels — nothing
-          is guessed. You can also add items manually. Only basic spices are preloaded.
+          Upload shelf photos. Dinner looks at packaging, produce, and labels, then matches each
+          item to your pantry catalog. You can also add items manually. Only basic spices are
+          preloaded.
         </p>
       </header>
 
@@ -232,9 +286,10 @@ export function PantryTab({
       <section className="add-form">
         <h3>Scan shelves</h3>
         <p className="add-form__hint">
-          Bulk-upload shelf photos (or short videos). Straight-on shots with readable labels work
-          best. Attach the same files in Cursor chat for identification.
+          Bulk-upload shelf photos. AI looks at every feature of each item (shape, brand marks,
+          color, produce, frozen bags) and picks the best pantry name.
         </p>
+        {!visionReady && <VisionKeyField onReady={() => setVisionReady(true)} />}
         <BulkUploadZone
           accept="image/*,video/*"
           disabled={busy}
@@ -272,6 +327,56 @@ export function PantryTab({
               </li>
             ))}
           </ul>
+        )}
+
+        {foundItems.length > 0 && (
+          <div className="scan-matches">
+            <h4>Found on your shelves</h4>
+            <p className="add-form__hint">
+              Review the matches, mark frozen when it applies, then add them to the pantry.
+            </p>
+            <ul className="item-list">
+              {foundItems.map((item) => (
+                <li key={item.name} className="item-row">
+                  <label className="toggle">
+                    <input
+                      type="checkbox"
+                      checked={foundSelected[item.name] ?? false}
+                      onChange={(e) =>
+                        setFoundSelected((prev) => ({ ...prev, [item.name]: e.target.checked }))
+                      }
+                    />
+                    <span className="item-row__name">{item.name}</span>
+                  </label>
+                  <span className="item-row__meta">
+                    {item.quantity}
+                    {item.catalogName && <span className="tag">Catalog</span>}
+                    {item.cues && <span>{item.cues}</span>}
+                  </span>
+                  {canBeFrozen(item.section, item.name) && (
+                    <label className="toggle toggle--compact">
+                      <input
+                        type="checkbox"
+                        checked={foundFrozen[item.name] ?? item.frozen}
+                        onChange={(e) =>
+                          setFoundFrozen((prev) => ({ ...prev, [item.name]: e.target.checked }))
+                        }
+                      />
+                      <span>Frozen</span>
+                    </label>
+                  )}
+                </li>
+              ))}
+            </ul>
+            <div className="clip-card__actions">
+              <button type="button" className="btn btn--primary" onClick={() => addFoundItems()}>
+                Add selected to pantry
+              </button>
+              <button type="button" className="btn btn--ghost" onClick={() => setFoundItems([])}>
+                Discard matches
+              </button>
+            </div>
+          </div>
         )}
       </section>
 

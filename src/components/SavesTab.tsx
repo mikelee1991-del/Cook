@@ -5,6 +5,8 @@ import type { SavedRecipe } from '../types';
 import { compressImageBatch } from '../lib/imageCompress';
 import { isLikelyImageFile } from '../lib/imageFiles';
 import { BulkUploadZone } from './BulkUploadZone';
+import { VisionKeyField } from './VisionKeyField';
+import { hasVisionAccess } from '../lib/visionConfig';
 
 interface SavesTabProps {
   recipes: SavedRecipe[];
@@ -44,6 +46,7 @@ export function SavesTab({
   const [busy, setBusy] = useState(false);
   const [busyLabel, setBusyLabel] = useState('Working…');
   const [formError, setFormError] = useState<string | null>(null);
+  const [visionReady, setVisionReady] = useState(() => hasVisionAccess());
   const [lightbox, setLightbox] = useState<{ images: string[]; index: number } | null>(
     null,
   );
@@ -165,9 +168,8 @@ export function SavesTab({
       <header className="panel-intro">
         <h2>Recipe saves</h2>
         <p>
-          Upload cookbook pages, cards, screenshots, or handwritten notes. Mixed layouts and
-          several recipes on one page are sorted automatically. Block letters read better than
-          loopy cursive.
+          Upload cookbook pages, cards, screenshots, or handwritten notes. AI looks at the whole
+          page — layout, photos of the dish, and handwriting — then splits recipes automatically.
         </p>
       </header>
 
@@ -208,10 +210,11 @@ export function SavesTab({
         <form className="add-form" onSubmit={handleScanSubmit}>
           <h3>Scan pages in bulk</h3>
           <p className="add-form__hint">
-            Drop cookbook scans, phone photos, cards, or handwritten lists. Crooked pages are
-            deskewed; two-column print is split; faint pencil gets a high-contrast pass. Original
-            files are read (not the small preview).
+            Drop cookbook scans, phone photos, cards, or handwritten lists. AI reads the whole
+            page instead of on-device OCR — crooked cards, two-column layouts, and mixed print
+            still work.
           </p>
+          {!visionReady && <VisionKeyField onReady={() => setVisionReady(true)} />}
           <BulkUploadZone
             accept="image/*"
             disabled={busy}

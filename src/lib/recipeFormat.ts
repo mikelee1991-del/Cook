@@ -382,6 +382,43 @@ export function formatReadableRecipe(raw: string): ReadableRecipe {
   };
 }
 
+/** Assemble a cookable body from structured vision output (no OCR dump). */
+export function formatStructuredRecipe(input: {
+  title?: string;
+  ingredients?: string[];
+  directions?: string[];
+  notes?: string;
+}): ReadableRecipe {
+  const title = (input.title || '').trim() || 'Untitled recipe';
+  const ingredients = (input.ingredients ?? []).map((l) => stripStepPrefix(normalizeLine(l))).filter(Boolean);
+  const directions = (input.directions ?? [])
+    .map((l) => stripStepPrefix(normalizeLine(l)))
+    .filter(Boolean);
+  const notes = (input.notes || '')
+    .split(/\n/)
+    .map(normalizeLine)
+    .filter(Boolean);
+
+  if (!ingredients.length && !directions.length) {
+    return formatReadableRecipe([title, input.notes].filter(Boolean).join('\n\n'));
+  }
+
+  const sections: string[] = [];
+  if (ingredients.length) sections.push(['Ingredients', ...ingredients.map((l) => `- ${l.replace(/^[-*•]\s*/, '')}`)].join('\n'));
+  if (directions.length) {
+    sections.push(['Directions', ...directions.map((l, i) => `${i + 1}. ${l}`)].join('\n'));
+  }
+  if (notes.length) {
+    sections.push(['Notes', ...notes.map((n) => `- ${n.replace(/^[-*•]\s*/, '')}`)].join('\n'));
+  }
+  return {
+    title,
+    body: sections.join('\n\n').trim(),
+    ingredients,
+    directions,
+  };
+}
+
 /** Format OCR text for display/save when we already know the clip title. */
 export function formatRecipeClipBody(raw: string, preferredTitle?: string): { title: string; body: string } {
   const formatted = formatReadableRecipe(raw);

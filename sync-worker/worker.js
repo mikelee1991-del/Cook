@@ -9,7 +9,7 @@ const MAX_BYTES = 1_800_000;
 function corsHeaders() {
   return {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, PUT, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, PUT, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Max-Age': '86400',
   };
@@ -28,7 +28,7 @@ function houseId(pathname) {
 }
 
 export default {
-  async fetch(request, _env, ctx) {
+  async fetch(request, env, ctx) {
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: corsHeaders() });
     }
@@ -36,6 +36,10 @@ export default {
     const url = new URL(request.url);
     if (url.pathname === '/health') {
       return json({ ok: true, service: 'dinner-sync' });
+    }
+
+    if (url.pathname === '/vision' && request.method === 'POST') {
+      return visionProxy(request, env);
     }
 
     const id = houseId(url.pathname);
@@ -81,3 +85,59 @@ export default {
     return json({ error: 'Method not allowed' }, 405);
   },
 };
+
+const VISION_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-flash-latest'];
+
+async function visionProxy(request, env) {
+  const key = env?.GEMINI_API_KEY;
+  if (!key) return json({ error: 'Vision is not configured on this worker' }, 503);
+
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: 'Invalid JSON' }, 400);
+  }
+  const prompt = typeof body?.prompt === 'string' ? body.prompt : '';
+  const images = Array.isArray(body?.images) ? body.images : [];
+  if (!prompt || !images.length) return json({ error: 'Missing prompt or images' }, 400);
+
+  const requested = typeof body?.model === 'string' && body.model.trim() ? body.model.trim() : VISION_MODELS[0];
+  const models = [requested, ...VISION_MODELS.filter((m) => m !== requested)];
+  let lastError = 'Vision request failed';
+
+  for (const model of models) {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [
+            {
+              role: 'user',
+              parts: [
+                { text: prompt },
+                ...images.map((img) => ({
+                  inline_data: {
+                    mime_type: img?.mimeType || 'image/jpeg',
+                    data: img?.data,
+                  },
+                })),
+              ],
+            },
+          ],
+          generationConfig: { temperature: 0.1, responseMimeType: 'application/json' },
+        }),
+      },
+    );
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      const text = (data.candidates?.[0]?.content?.parts || []).map((p) => p.text || '').join('\n');
+      return json({ text, candidates: data.candidates });
+    }
+    lastError = data.error?.message || `Vision request failed (${res.status})`;
+    if (res.status !== 404) return json({ error: lastError }, res.status);
+  }
+  return json({ error: lastError }, 502);
+}

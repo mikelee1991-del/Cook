@@ -1,4 +1,5 @@
 import type { SyncStatus } from '../hooks/useDinnerSync';
+import { VisionKeyField } from './VisionKeyField';
 
 interface DevicesPanelProps {
   status: SyncStatus;
@@ -51,6 +52,7 @@ export function DevicesPanel({
           Sync now
         </button>
       </p>
+      <VisionKeyField />
     </section>
   );
 }
