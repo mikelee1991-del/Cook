@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { createBasicSpices } from '../src/data/pantrySeed.ts';
 import { recipes } from '../src/data/recipes.ts';
 import { pantryDraftFromName } from '../src/lib/pantryDraft.ts';
+import { canBeFrozen } from '../src/lib/frozenHandling.ts';
 import {
   ingredientNamesMatch,
   matchRecipeToPantry,
@@ -77,5 +78,11 @@ const draft = pantryDraftFromName('Lemons');
 assert.equal(draft.name, 'Lemons');
 assert.equal(draft.section, 'fresh');
 assert.match(draft.expiresAt, /^\d{4}-\d{2}-\d{2}$/);
+
+console.log('→ frozen toggle only for freezable sections');
+assert.equal(canBeFrozen('fresh'), true);
+assert.equal(canBeFrozen('refrigerated'), true);
+assert.equal(canBeFrozen('frozen'), false);
+assert.equal(canBeFrozen('dry'), false);
 
 console.log('test-recommend: ok');

@@ -1,4 +1,4 @@
-import type { EaseLevel, PantryItem, Recipe } from '../types';
+import type { EaseLevel, PantryItem, PantrySection, Recipe } from '../types';
 import { EASE_RANK } from './cookFilters';
 import {
   getExpirationStatus,
@@ -27,6 +27,11 @@ export interface FrozenCookTiming {
 }
 
 const EASE_BY_RANK: EaseLevel[] = ['easy', 'moderate', 'involved'];
+
+/** Fresh and refrigerated stock can be marked frozen when adding to the pantry. */
+export function canBeFrozen(section: PantrySection): boolean {
+  return section === 'fresh' || section === 'refrigerated';
+}
 
 /** Frozen flag, with Frozen-section items treated as frozen unless explicitly unmarked. */
 export function isFrozenItem(item: PantryItem): boolean {
