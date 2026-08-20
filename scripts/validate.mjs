@@ -56,6 +56,11 @@ const rec = read('src/lib/recommendIngredients.ts');
 assert.match(rec, /recommendFromStock/, 'recommendation engine present');
 assert.match(read('src/lib/pantryUtils.ts'), /ingredientNamesMatch/, 'form-aware pantry match');
 assert.match(read('src/components/RecommendedIngredients.tsx'), /Add to pantry/, 'add-to-pantry on list');
+assert.doesNotMatch(read('src/components/RecommendedIngredients.tsx'), /Add ingredient/, 'no manual add field on recommended list');
+assert.ok(
+  pantry.indexOf('pantry-sections') < pantry.indexOf('<RecommendedIngredients'),
+  'recommended section at bottom of pantry',
+);
 
 const saves = read('src/components/SavesTab.tsx');
 assert.match(saves, /Scan pages in bulk|Scan & sort/, 'saves scan path present');

@@ -6,7 +6,6 @@ import type { RecommendedIngredient } from '../types';
 interface RecommendedIngredientsProps {
   items: RecommendedIngredient[];
   dismissedCount: number;
-  onAdd: (name: string, note: string) => RecommendedIngredient | null;
   onUpdate: (item: RecommendedIngredient, patch: { name?: string; note?: string }) => void;
   onRemove: (item: RecommendedIngredient) => void;
   onRestoreAutos: () => void;
@@ -16,32 +15,15 @@ interface RecommendedIngredientsProps {
 export function RecommendedIngredients({
   items,
   dismissedCount,
-  onAdd,
   onUpdate,
   onRemove,
   onRestoreAutos,
   onAddToPantry,
 }: RecommendedIngredientsProps) {
-  const [name, setName] = useState('');
-  const [note, setNote] = useState('');
-  const [formError, setFormError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftName, setDraftName] = useState('');
   const [draftNote, setDraftNote] = useState('');
   const [frozenById, setFrozenById] = useState<Record<string, boolean>>({});
-
-  function handleAdd(e: React.FormEvent) {
-    e.preventDefault();
-    if (!name.trim()) return;
-    const added = onAdd(name, note);
-    if (!added) {
-      setFormError('That ingredient is already on the list.');
-      return;
-    }
-    setName('');
-    setNote('');
-    setFormError(null);
-  }
 
   function startEdit(item: RecommendedIngredient) {
     setEditingId(item.id);
@@ -58,45 +40,13 @@ export function RecommendedIngredients({
     <section className="add-form recommended-section">
       <h3>Recommended ingredients</h3>
       <p className="add-form__hint">
-        Based on what you already have — extras that unlock near-ready recipes. Add your own or
-        edit any row. Use “Add to pantry” when you have it in stock.
+        Based on what you already have — extras that unlock near-ready recipes. Edit any row or use
+        “Add to pantry” when you have it in stock.
       </p>
-
-      <form className="add-form__grid saves-form-grid" onSubmit={handleAdd}>
-        <label className="field field--grow">
-          <span className="field__label">Add ingredient</span>
-          <input
-            value={name}
-            onChange={(e) => {
-              setName(e.target.value);
-              setFormError(null);
-            }}
-            placeholder="e.g. Lemons"
-            required
-          />
-        </label>
-        <label className="field field--grow">
-          <span className="field__label">Note (optional)</span>
-          <input
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="Why you want it…"
-          />
-        </label>
-        <button type="submit" className="btn btn--primary add-form__submit">
-          Add to list
-        </button>
-      </form>
-      {formError && (
-        <p className="recommended-error" role="status">
-          {formError}
-        </p>
-      )}
 
       {items.length === 0 ? (
         <p className="empty-state">
-          No recommendations yet. Add pantry stock (beyond spices) or add ingredients manually
-          above.
+          No recommendations yet. Add pantry stock beyond spices to see suggestions here.
         </p>
       ) : (
         <ul className="item-list recommended-list">
