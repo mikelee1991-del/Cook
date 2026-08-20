@@ -53,6 +53,7 @@ assert.ok(lemonMatch.missing.includes('Garlic'));
 console.log('→ recommendations from spice stock');
 const spiceRecs = recommendFromStock(spicePantry());
 assert.ok(spiceRecs.length > 0, 'spice pantry should still suggest useful extras');
+assert.ok(spiceRecs.length >= 16, `expected a fuller list, got ${spiceRecs.length}`);
 const spiceNames = spiceRecs.map((r) => r.name);
 assert.ok(spiceNames.includes('Olive oil'), `expected olive oil, got ${spiceNames.join(', ')}`);
 assert.ok(spiceNames.includes('Garlic'), `expected fresh garlic, got ${spiceNames.join(', ')}`);
