@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { createBasicSpices } from '../src/data/pantrySeed.ts';
 import { recipes } from '../src/data/recipes.ts';
 import { pantryDraftFromName } from '../src/lib/pantryDraft.ts';
-import { canBeFrozen } from '../src/lib/frozenHandling.ts';
+import { canBeFrozen, canToggleFrozen } from '../src/lib/frozenHandling.ts';
 import {
   ingredientNamesMatch,
   matchRecipeToPantry,
@@ -92,5 +92,10 @@ console.log('→ dry staples default to dry section');
 const flourDraft = pantryDraftFromName('All-purpose flour');
 assert.equal(flourDraft.section, 'dry');
 assert.equal(pantryDraftFromName('Chicken thighs').section, 'refrigerated');
+
+console.log('→ pantry rows skip freeze for staples');
+assert.equal(canToggleFrozen({ name: 'Kosher salt', section: 'dry', isStaple: true }), false);
+assert.equal(canToggleFrozen({ name: 'All-purpose flour', section: 'dry' }), false);
+assert.equal(canToggleFrozen({ name: 'Chicken thighs', section: 'refrigerated' }), true);
 
 console.log('test-recommend: ok');

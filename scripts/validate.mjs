@@ -72,7 +72,7 @@ assert.doesNotMatch(cook, /Instant Pot|Air fryer|air-fryer|instant-pot/, 'cook U
 assert.match(read('src/lib/frozenHandling.ts'), /cook-from-frozen/, 'frozen cook timing');
 assert.match(read('src/lib/frozenHandling.ts'), /isDryPantryStaple/, 'dry staples skip frozen toggle');
 assert.match(read('src/components/PantryTab.tsx'), /canBeFrozen/, 'conditional frozen toggle on add');
-assert.match(read('src/components/PantryTab.tsx'), /Unfreeze|Freeze/, 'pantry freeze toggle');
+assert.match(read('src/components/PantryTab.tsx'), /canToggleFrozen/, 'freeze toggle hidden for staples');
 assert.match(read('src/components/RecommendedIngredients.tsx'), /Frozen/, 'frozen toggle on recommended add');
 
 assert.match(read('src/lib/ocrPreprocess.ts'), /prepareOcrPage/, 'OCR preprocess wired');
