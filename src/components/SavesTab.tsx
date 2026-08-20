@@ -6,7 +6,7 @@ import { compressImageBatch } from '../lib/imageCompress';
 import { isLikelyImageFile } from '../lib/imageFiles';
 import { BulkUploadZone } from './BulkUploadZone';
 import { VisionKeyField } from './VisionKeyField';
-import { hasVisionAccess } from '../lib/visionConfig';
+import { hasVisionAccess, usesGlobalVision } from '../lib/visionConfig';
 
 interface SavesTabProps {
   recipes: SavedRecipe[];
@@ -214,7 +214,9 @@ export function SavesTab({
             page instead of on-device OCR — crooked cards, two-column layouts, and mixed print
             still work.
           </p>
-          {!visionReady && <VisionKeyField onReady={() => setVisionReady(true)} />}
+          {!visionReady && !usesGlobalVision() && (
+            <VisionKeyField onReady={() => setVisionReady(true)} />
+          )}
           <BulkUploadZone
             accept="image/*"
             disabled={busy}

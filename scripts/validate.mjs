@@ -80,7 +80,7 @@ assert.match(read('src/lib/scanImages.ts'), /visionJson/, 'recipe scans use visi
 assert.match(read('src/lib/scanImages.ts'), /identifyPantryPhotos/, 'pantry photos identified by vision');
 assert.match(read('src/lib/visionPantry.ts'), /bestCatalogMatch/, 'catalog matching for seen items');
 assert.match(read('src/lib/visionRecipes.ts'), /RECIPE_VISION_PROMPT/, 'recipe vision prompt');
-assert.match(read('src/components/VisionKeyField.tsx'), /Gemini API key/, 'vision key field');
+assert.match(read('src/lib/visionConfig.ts'), /usesGlobalVision/, 'global vision proxy helper');
 assert.match(read('src/lib/ocrText.ts'), /pageDensityFromInk/, 'sparse vs print layout');
 assert.match(read('src/lib/ocrPreprocess.ts'), /sliceRecipeLayout/, 'two-column / band layout split');
 assert.match(read('src/lib/ocrText.ts'), /dropLeadingOrphanCopy/, 'drop leftover previous-recipe copy');

@@ -12,7 +12,7 @@ import {
 import { canBeFrozen, canToggleFrozen, isFrozenItem } from '../lib/frozenHandling';
 import { pantryDraftFromName } from '../lib/pantryDraft';
 import { identifyPantryPhotos } from '../lib/scanImages';
-import { hasVisionAccess } from '../lib/visionConfig';
+import { hasVisionAccess, usesGlobalVision } from '../lib/visionConfig';
 import type { IdentifiedPantryItem } from '../lib/visionPantry';
 import { BulkUploadZone } from './BulkUploadZone';
 import { RecommendedIngredients } from './RecommendedIngredients';
@@ -203,7 +203,9 @@ export function PantryTab({
       if (!photoSources.length) return;
       if (!visionReady && !hasVisionAccess()) {
         setUploadError(
-          'Photos saved. Add a Gemini API key in Devices so Dinner can identify items from packaging and produce.',
+          usesGlobalVision()
+            ? 'Photos saved. Shared vision is not configured on the worker yet.'
+            : 'Photos saved. Add a Gemini API key in Devices so Dinner can identify items from packaging and produce.',
         );
         return;
       }
@@ -289,7 +291,9 @@ export function PantryTab({
           Bulk-upload shelf photos. AI looks at every feature of each item (shape, brand marks,
           color, produce, frozen bags) and picks the best pantry name.
         </p>
-        {!visionReady && <VisionKeyField onReady={() => setVisionReady(true)} />}
+        {!visionReady && !usesGlobalVision() && (
+          <VisionKeyField onReady={() => setVisionReady(true)} />
+        )}
         <BulkUploadZone
           accept="image/*,video/*"
           disabled={busy}
