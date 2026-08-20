@@ -8,7 +8,7 @@ import {
   getExpirationStatus,
   todayISO,
 } from '../lib/pantryUtils';
-import { isFrozenItem } from '../lib/frozenHandling';
+import { canBeFrozen, isFrozenItem } from '../lib/frozenHandling';
 import { BulkUploadZone } from './BulkUploadZone';
 import { RecommendedIngredients } from './RecommendedIngredients';
 
@@ -47,7 +47,7 @@ interface PantryTabProps {
   ) => void;
   onRemoveRecommended: (item: RecommendedIngredient) => void;
   onRestoreRecommended: () => void;
-  onAddRecommendedToPantry: (item: RecommendedIngredient) => void;
+  onAddRecommendedToPantry: (item: RecommendedIngredient, opts?: { frozen?: boolean }) => void;
 }
 
 export function PantryTab({
@@ -108,6 +108,8 @@ export function PantryTab({
 
   const expired = filtered.filter((i) => getExpirationStatus(i.expiresAt) === 'expired');
   const soon = filtered.filter((i) => getExpirationStatus(i.expiresAt) === 'soon');
+
+  const showFrozenToggle = canBeFrozen(section);
 
   function selectSuggestion(catalogName: string) {
     const hit = groceryCatalog.find((c) => c.name === catalogName);
@@ -342,7 +344,8 @@ export function PantryTab({
               onChange={(e) => {
                 const next = e.target.value as PantrySection;
                 setSection(next);
-                setFrozen(next === 'frozen');
+                if (next === 'frozen') setFrozen(true);
+                else if (!canBeFrozen(next)) setFrozen(false);
               }}
             >
               {SECTIONS.map((s) => (
@@ -374,19 +377,16 @@ export function PantryTab({
             Add to pantry
           </button>
         </div>
-        <label className="toggle pantry-frozen-toggle">
-          <input
-            type="checkbox"
-            checked={frozen}
-            onChange={(e) => {
-              const next = e.target.checked;
-              setFrozen(next);
-              if (next) setSection('frozen');
-              else if (section === 'frozen') setSection('refrigerated');
-            }}
-          />
-          <span>Frozen — Cook will add thaw or cook-from-frozen time</span>
-        </label>
+        {showFrozenToggle && (
+          <label className="toggle pantry-frozen-toggle">
+            <input
+              type="checkbox"
+              checked={frozen}
+              onChange={(e) => setFrozen(e.target.checked)}
+            />
+            <span>Frozen</span>
+          </label>
+        )}
       </form>
 
       <div className="pantry-sections">

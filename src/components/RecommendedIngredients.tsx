@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { pantryDraftFromName } from '../lib/pantryDraft';
+import { canBeFrozen } from '../lib/frozenHandling';
 import type { RecommendedIngredient } from '../types';
 
 interface RecommendedIngredientsProps {
@@ -8,7 +10,7 @@ interface RecommendedIngredientsProps {
   onUpdate: (item: RecommendedIngredient, patch: { name?: string; note?: string }) => void;
   onRemove: (item: RecommendedIngredient) => void;
   onRestoreAutos: () => void;
-  onAddToPantry: (item: RecommendedIngredient) => void;
+  onAddToPantry: (item: RecommendedIngredient, opts?: { frozen?: boolean }) => void;
 }
 
 export function RecommendedIngredients({
@@ -26,6 +28,7 @@ export function RecommendedIngredients({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftName, setDraftName] = useState('');
   const [draftNote, setDraftNote] = useState('');
+  const [frozenById, setFrozenById] = useState<Record<string, boolean>>({});
 
   function handleAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -150,13 +153,34 @@ export function RecommendedIngredients({
                   </div>
                   <div className="clip-card__actions">
                     {!item.inPantry && (
-                      <button
-                        type="button"
-                        className="btn btn--ghost"
-                        onClick={() => onAddToPantry(item)}
-                      >
-                        Add to pantry
-                      </button>
+                      <>
+                        {canBeFrozen(pantryDraftFromName(item.name).section) && (
+                          <label className="toggle toggle--compact">
+                            <input
+                              type="checkbox"
+                              checked={frozenById[item.id] ?? false}
+                              onChange={(e) =>
+                                setFrozenById((prev) => ({
+                                  ...prev,
+                                  [item.id]: e.target.checked,
+                                }))
+                              }
+                            />
+                            <span>Frozen</span>
+                          </label>
+                        )}
+                        <button
+                          type="button"
+                          className="btn btn--ghost"
+                          onClick={() =>
+                            onAddToPantry(item, {
+                              frozen: frozenById[item.id] ?? false,
+                            })
+                          }
+                        >
+                          Add to pantry
+                        </button>
+                      </>
                     )}
                     <button
                       type="button"

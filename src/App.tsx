@@ -66,8 +66,9 @@ export default function App() {
     replaceScans,
   });
 
-  function addRecommendedToPantry(item: RecommendedIngredient) {
-    addItem(pantryDraftFromName(item.name));
+  function addRecommendedToPantry(item: RecommendedIngredient, opts?: { frozen?: boolean }) {
+    const draft = pantryDraftFromName(item.name);
+    addItem({ ...draft, frozen: opts?.frozen ?? draft.frozen });
     removeRecommended(item);
   }
 

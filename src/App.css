@@ -624,6 +624,15 @@
   accent-color: var(--moss);
 }
 
+.toggle--compact {
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.pantry-frozen-toggle {
+  margin-top: 0.75rem;
+}
+
 .source-fieldset {
   margin: 0;
   padding: 0;
