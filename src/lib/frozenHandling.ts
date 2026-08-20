@@ -45,6 +45,12 @@ export function canBeFrozen(section: PantrySection, name = ''): boolean {
   return section === 'fresh' || section === 'refrigerated';
 }
 
+/** Whether an existing pantry row should offer Freeze / Unfreeze. */
+export function canToggleFrozen(item: Pick<PantryItem, 'name' | 'section' | 'isStaple'>): boolean {
+  if (item.isStaple) return false;
+  return canBeFrozen(item.section, item.name);
+}
+
 /** Frozen flag, with Frozen-section items treated as frozen unless explicitly unmarked. */
 export function isFrozenItem(item: PantryItem): boolean {
   if (item.frozen === false) return false;

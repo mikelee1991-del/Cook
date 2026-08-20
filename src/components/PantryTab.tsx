@@ -8,7 +8,7 @@ import {
   getExpirationStatus,
   todayISO,
 } from '../lib/pantryUtils';
-import { canBeFrozen, isFrozenItem } from '../lib/frozenHandling';
+import { canBeFrozen, canToggleFrozen, isFrozenItem } from '../lib/frozenHandling';
 import { BulkUploadZone } from './BulkUploadZone';
 import { RecommendedIngredients } from './RecommendedIngredients';
 
@@ -479,9 +479,11 @@ function PantryRow({
         </p>
       )}
       <div className="clip-card__actions">
-        <button type="button" className="btn btn--ghost" onClick={toggleFrozen}>
-          {frozen ? 'Unfreeze' : 'Freeze'}
-        </button>
+        {canToggleFrozen(item) && (
+          <button type="button" className="btn btn--ghost" onClick={toggleFrozen}>
+            {frozen ? 'Unfreeze' : 'Freeze'}
+          </button>
+        )}
         <button
           type="button"
           className={status === 'expired' ? 'btn btn--danger' : 'btn btn--ghost'}
