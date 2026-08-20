@@ -1,10 +1,19 @@
 import { useState } from 'react';
-import { hasVisionAccess, loadVisionKey, saveVisionKey } from '../lib/visionConfig';
+import { hasVisionAccess, loadVisionKey, saveVisionKey, usesGlobalVision } from '../lib/visionConfig';
 
 export function VisionKeyField({ onReady }: { onReady?: () => void }) {
   const [key, setKey] = useState(() => loadVisionKey());
   const [saved, setSaved] = useState(false);
+  const globalVision = usesGlobalVision();
   const ready = hasVisionAccess();
+
+  if (globalVision) {
+    return (
+      <p className="add-form__hint">
+        Photo scans use a shared vision service — no API key needed in this browser.
+      </p>
+    );
+  }
 
   function handleSave(e: React.FormEvent) {
     e.preventDefault();
