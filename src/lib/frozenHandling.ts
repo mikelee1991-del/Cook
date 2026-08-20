@@ -28,8 +28,20 @@ export interface FrozenCookTiming {
 
 const EASE_BY_RANK: EaseLevel[] = ['easy', 'moderate', 'involved'];
 
-/** Fresh and refrigerated stock can be marked frozen when adding to the pantry. */
-export function canBeFrozen(section: PantrySection): boolean {
+/** Pantry staples that are stored dry — not meaningful to mark as frozen. */
+export function isDryPantryStaple(name: string): boolean {
+  const n = normalizeName(name);
+  if (/\bflour tortilla/.test(n)) return false;
+  if (/\bflour\b/.test(n)) return true;
+  return /\b(sugar|brown sugar|powdered sugar|confectioners sugar|salt|kosher salt|sea salt|black pepper|pepper flakes|rice|jasmine rice|basmati|pasta|penne|spaghetti|macaroni|noodles|olive oil|vegetable oil|canola oil|sesame oil|vinegar|soy sauce|hot sauce|baking powder|baking soda|yeast|cornstarch|corn starch|cocoa powder|chickpeas|black beans|kidney beans|cannellini beans|lentils|canned|broth|stock|bouillon|honey|maple syrup|molasses|vanilla extract|extract|paprika|cumin|oregano|thyme|turmeric|chili powder|garlic powder|onion powder|peanut butter|jam|preserves|oats|quinoa|couscous|barley|bulgur|cornmeal|semolina|breadcrumbs|panko|cereal|crackers|tea|coffee|wine|beer)\b/.test(
+    n,
+  );
+}
+
+/** Fresh/refrigerated stock that is not a dry staple can be marked frozen when adding. */
+export function canBeFrozen(section: PantrySection, name = ''): boolean {
+  if (section === 'dry' || section === 'frozen') return false;
+  if (name.trim() && isDryPantryStaple(name)) return false;
   return section === 'fresh' || section === 'refrigerated';
 }
 

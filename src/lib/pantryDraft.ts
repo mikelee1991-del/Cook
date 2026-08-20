@@ -1,4 +1,5 @@
 import { groceryCatalog } from '../data/pantrySeed';
+import { isDryPantryStaple } from './frozenHandling';
 import type { PantrySection, Store } from '../types';
 import { ingredientNamesMatch, normalizeName } from './pantryUtils';
 
@@ -19,7 +20,7 @@ export function pantryDraftFromName(name: string): {
   const d = new Date();
   d.setHours(12, 0, 0, 0);
   d.setDate(d.getDate() + days);
-  const section = hit?.section ?? 'fresh';
+  const section = hit?.section ?? (isDryPantryStaple(trimmed) ? 'dry' : 'fresh');
   return {
     name: hit?.name ?? trimmed,
     store: 'Other',

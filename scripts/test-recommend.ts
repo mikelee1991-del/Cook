@@ -84,5 +84,13 @@ assert.equal(canBeFrozen('fresh'), true);
 assert.equal(canBeFrozen('refrigerated'), true);
 assert.equal(canBeFrozen('frozen'), false);
 assert.equal(canBeFrozen('dry'), false);
+assert.equal(canBeFrozen('fresh', 'All-purpose flour'), false);
+assert.equal(canBeFrozen('fresh', 'Chicken thighs'), true);
+assert.equal(canBeFrozen('refrigerated', 'Flour tortillas'), true);
+
+console.log('→ dry staples default to dry section');
+const flourDraft = pantryDraftFromName('All-purpose flour');
+assert.equal(flourDraft.section, 'dry');
+assert.equal(pantryDraftFromName('Chicken thighs').section, 'refrigerated');
 
 console.log('test-recommend: ok');
