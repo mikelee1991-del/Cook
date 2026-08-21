@@ -59,8 +59,10 @@ assert.match(read('src/lib/pantryUtils.ts'), /ingredientNamesMatch/, 'form-aware
 assert.match(read('src/components/RecommendedIngredients.tsx'), /Add to pantry/, 'add-to-pantry on list');
 assert.doesNotMatch(read('src/components/RecommendedIngredients.tsx'), /Add ingredient/, 'no manual add field on recommended list');
 assert.ok(
-  pantry.indexOf('pantry-sections') < pantry.indexOf('<RecommendedIngredients'),
-  'recommended section at bottom of pantry',
+  pantry.indexOf('pantry-sections') < pantry.indexOf('Add an item') &&
+    pantry.indexOf('Add an item') < pantry.indexOf('Scan shelves') &&
+    pantry.indexOf('Scan shelves') < pantry.indexOf('<RecommendedIngredients'),
+  'pantry order: contents, add item, scan shelves, then recommended',
 );
 
 const saves = read('src/components/SavesTab.tsx');
