@@ -255,9 +255,8 @@ export function PantryTab({
       <header className="panel-intro">
         <h2>Your pantry</h2>
         <p>
-          Upload shelf photos. Dinner looks at packaging, produce, and labels, then matches each
-          item to your pantry catalog. You can also add items manually. Only basic spices are
-          preloaded.
+          See what you have, add items by hand, or upload shelf photos so Dinner can match packaging
+          and produce to your catalog. Only basic spices are preloaded.
         </p>
       </header>
 
@@ -278,6 +277,133 @@ export function PantryTab({
           )}
         </aside>
       )}
+
+      <div className="pantry-toolbar pantry-toolbar--simple">
+        <label className="field field--grow">
+          <span className="field__label">Search pantry</span>
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Chicken, beans, spinach…"
+            autoComplete="off"
+          />
+        </label>
+        <button type="button" className="btn btn--ghost" onClick={onReset}>
+          Reset to basic spices
+        </button>
+      </div>
+
+      <div className="pantry-sections">
+        {SECTIONS.map(({ id, label }) => {
+          const sectionItems = filtered.filter((i) => i.section === id);
+          if (sectionItems.length === 0) return null;
+          return (
+            <section key={id} className="pantry-section">
+              <h3>{label}</h3>
+              <ul className="item-list">
+                {sectionItems.map((item) => (
+                  <PantryRow
+                    key={item.id}
+                    item={item}
+                    onRemove={onRemove}
+                    onUpdate={onUpdate}
+                  />
+                ))}
+              </ul>
+            </section>
+          );
+        })}
+        {filtered.length === 0 && (
+          <p className="empty-state">No items match your search. Clear the filter to see everything.</p>
+        )}
+      </div>
+
+      <form className="add-form" onSubmit={handleAdd}>
+        <h3>Add an item</h3>
+        <p className="add-form__hint">Search the catalog or type any item name.</p>
+        <div className="add-form__grid">
+          <label className="field field--grow suggest-wrap">
+            <span className="field__label">Item</span>
+            <input
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value);
+                setShowSuggestions(true);
+              }}
+              onFocus={() => setShowSuggestions(true)}
+              onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+              placeholder="Search or type an item…"
+              required
+              autoComplete="off"
+            />
+            {showSuggestions && suggestions.length > 0 && (
+              <ul className="suggest-list" role="listbox">
+                {suggestions.map((s) => (
+                  <li key={s.name}>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => selectSuggestion(s.name)}
+                    >
+                      <span>{s.name}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </label>
+          <label className="field">
+            <span className="field__label">Section</span>
+            <select
+              value={section}
+              onChange={(e) => {
+                const next = e.target.value as PantrySection;
+                setSection(next);
+                if (next === 'frozen') setFrozen(true);
+                else if (!canBeFrozen(next)) setFrozen(false);
+              }}
+            >
+              {SECTIONS.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            <span className="field__label">Quantity</span>
+            <input
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value)}
+              placeholder="1 lb"
+            />
+          </label>
+          <label className="field">
+            <span className="field__label">Expires</span>
+            <input
+              type="date"
+              value={expiresAt}
+              min={todayISO()}
+              onChange={(e) => setExpiresAt(e.target.value)}
+              required
+            />
+          </label>
+          <button type="submit" className="btn btn--primary add-form__submit">
+            Add to pantry
+          </button>
+        </div>
+        {showFrozenToggle && (
+          <label className="toggle pantry-frozen-toggle">
+            <input
+              type="checkbox"
+              checked={frozen}
+              onChange={(e) => setFrozen(e.target.checked)}
+            />
+            <span>Frozen</span>
+          </label>
+        )}
+      </form>
 
       {(mediaError || uploadError) && (
         <aside className="expiry-banner" role="alert">
@@ -383,133 +509,6 @@ export function PantryTab({
           </div>
         )}
       </section>
-
-      <div className="pantry-toolbar pantry-toolbar--simple">
-        <label className="field field--grow">
-          <span className="field__label">Search pantry</span>
-          <input
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Chicken, beans, spinach…"
-            autoComplete="off"
-          />
-        </label>
-        <button type="button" className="btn btn--ghost" onClick={onReset}>
-          Reset to basic spices
-        </button>
-      </div>
-
-      <form className="add-form" onSubmit={handleAdd}>
-        <h3>Add an item</h3>
-        <p className="add-form__hint">Search the catalog or type any item name.</p>
-        <div className="add-form__grid">
-          <label className="field field--grow suggest-wrap">
-            <span className="field__label">Item</span>
-            <input
-              value={name}
-              onChange={(e) => {
-                setName(e.target.value);
-                setShowSuggestions(true);
-              }}
-              onFocus={() => setShowSuggestions(true)}
-              onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-              placeholder="Search or type an item…"
-              required
-              autoComplete="off"
-            />
-            {showSuggestions && suggestions.length > 0 && (
-              <ul className="suggest-list" role="listbox">
-                {suggestions.map((s) => (
-                  <li key={s.name}>
-                    <button
-                      type="button"
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => selectSuggestion(s.name)}
-                    >
-                      <span>{s.name}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </label>
-          <label className="field">
-            <span className="field__label">Section</span>
-            <select
-              value={section}
-              onChange={(e) => {
-                const next = e.target.value as PantrySection;
-                setSection(next);
-                if (next === 'frozen') setFrozen(true);
-                else if (!canBeFrozen(next)) setFrozen(false);
-              }}
-            >
-              {SECTIONS.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="field">
-            <span className="field__label">Quantity</span>
-            <input
-              value={quantity}
-              onChange={(e) => setQuantity(e.target.value)}
-              placeholder="1 lb"
-            />
-          </label>
-          <label className="field">
-            <span className="field__label">Expires</span>
-            <input
-              type="date"
-              value={expiresAt}
-              min={todayISO()}
-              onChange={(e) => setExpiresAt(e.target.value)}
-              required
-            />
-          </label>
-          <button type="submit" className="btn btn--primary add-form__submit">
-            Add to pantry
-          </button>
-        </div>
-        {showFrozenToggle && (
-          <label className="toggle pantry-frozen-toggle">
-            <input
-              type="checkbox"
-              checked={frozen}
-              onChange={(e) => setFrozen(e.target.checked)}
-            />
-            <span>Frozen</span>
-          </label>
-        )}
-      </form>
-
-      <div className="pantry-sections">
-        {SECTIONS.map(({ id, label }) => {
-          const sectionItems = filtered.filter((i) => i.section === id);
-          if (sectionItems.length === 0) return null;
-          return (
-            <section key={id} className="pantry-section">
-              <h3>{label}</h3>
-              <ul className="item-list">
-                {sectionItems.map((item) => (
-                  <PantryRow
-                    key={item.id}
-                    item={item}
-                    onRemove={onRemove}
-                    onUpdate={onUpdate}
-                  />
-                ))}
-              </ul>
-            </section>
-          );
-        })}
-        {filtered.length === 0 && (
-          <p className="empty-state">No items match your search. Clear the filter to see everything.</p>
-        )}
-      </div>
 
       <RecommendedIngredients
         items={recommended}
