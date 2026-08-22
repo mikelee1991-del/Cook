@@ -405,11 +405,14 @@ export function PantryTab({
         )}
       </form>
 
-      {(mediaError || uploadError) && (
-        <aside className="expiry-banner" role="alert">
-          <p className="expiry-banner__expired">{mediaError || uploadError}</p>
-        </aside>
-      )}
+      <RecommendedIngredients
+        items={recommended}
+        dismissedCount={dismissedCount}
+        onUpdate={onUpdateRecommended}
+        onRemove={onRemoveRecommended}
+        onRestoreAutos={onRestoreRecommended}
+        onAddToPantry={onAddRecommendedToPantry}
+      />
 
       <section className="add-form">
         <h3>Scan shelves</h3>
@@ -419,6 +422,11 @@ export function PantryTab({
         </p>
         {!visionReady && !usesGlobalVision() && (
           <VisionKeyField onReady={() => setVisionReady(true)} />
+        )}
+        {(mediaError || uploadError) && (
+          <aside className="expiry-banner" role="alert">
+            <p className="expiry-banner__expired">{mediaError || uploadError}</p>
+          </aside>
         )}
         <BulkUploadZone
           accept="image/*,video/*"
@@ -509,15 +517,6 @@ export function PantryTab({
           </div>
         )}
       </section>
-
-      <RecommendedIngredients
-        items={recommended}
-        dismissedCount={dismissedCount}
-        onUpdate={onUpdateRecommended}
-        onRemove={onRemoveRecommended}
-        onRestoreAutos={onRestoreRecommended}
-        onAddToPantry={onAddRecommendedToPantry}
-      />
 
       {lightbox && (
         <div
