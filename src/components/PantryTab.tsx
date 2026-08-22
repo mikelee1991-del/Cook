@@ -405,6 +405,15 @@ export function PantryTab({
         )}
       </form>
 
+      <RecommendedIngredients
+        items={recommended}
+        dismissedCount={dismissedCount}
+        onUpdate={onUpdateRecommended}
+        onRemove={onRemoveRecommended}
+        onRestoreAutos={onRestoreRecommended}
+        onAddToPantry={onAddRecommendedToPantry}
+      />
+
       {(mediaError || uploadError) && (
         <aside className="expiry-banner" role="alert">
           <p className="expiry-banner__expired">{mediaError || uploadError}</p>
@@ -509,15 +518,6 @@ export function PantryTab({
           </div>
         )}
       </section>
-
-      <RecommendedIngredients
-        items={recommended}
-        dismissedCount={dismissedCount}
-        onUpdate={onUpdateRecommended}
-        onRemove={onRemoveRecommended}
-        onRestoreAutos={onRestoreRecommended}
-        onAddToPantry={onAddRecommendedToPantry}
-      />
 
       {lightbox && (
         <div
