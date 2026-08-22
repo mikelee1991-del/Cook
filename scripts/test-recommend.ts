@@ -3,7 +3,7 @@
  * Run with: npx tsx scripts/test-recommend.ts
  */
 import assert from 'node:assert/strict';
-import { createBasicSpices } from '../src/data/pantrySeed.ts';
+import { createBasicSpices, groceryCatalog } from '../src/data/pantrySeed.ts';
 import { recipes } from '../src/data/recipes.ts';
 import { pantryDraftFromName } from '../src/lib/pantryDraft.ts';
 import { canBeFrozen, canToggleFrozen } from '../src/lib/frozenHandling.ts';
@@ -80,6 +80,24 @@ const withOil = recommendFromStock(withItems(['Olive oil', 'Garlic', 'Lemons']))
 assert.ok(!withOil.some((r) => r.name === 'Olive oil'));
 assert.ok(!withOil.some((r) => r.name === 'Garlic'));
 assert.ok(!withOil.some((r) => r.name === 'Lemons'));
+
+console.log('→ grocery catalog covers common add-item staples');
+const catalogNames = new Set(groceryCatalog.map((c) => c.name));
+for (const name of [
+  'Tomatoes',
+  'Ground beef',
+  'Bacon',
+  'Russet potatoes',
+  'All-purpose flour',
+  'Granulated sugar',
+  'White vinegar',
+  'Mozzarella',
+  'Spaghetti',
+  'Chicken broth',
+]) {
+  assert.ok(catalogNames.has(name), `missing catalog staple: ${name}`);
+}
+assert.ok(groceryCatalog.length >= 150, 'catalog should be large enough for common groceries');
 
 console.log('→ pantry draft uses catalog defaults');
 const draft = pantryDraftFromName('Lemons');
