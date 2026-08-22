@@ -30,6 +30,8 @@ export type FlavorProfile =
 
 export type RecipeSource = 'nyt' | 'nyt-saved' | 'original' | 'other';
 
+export type MealType = 'breakfast' | 'lunch' | 'dinner' | 'side';
+
 export interface PantryItem {
   id: string;
   name: string;
@@ -68,6 +70,7 @@ export interface Recipe {
   ease: EaseLevel;
   apparatus: CookingApparatus[];
   flavors: FlavorProfile[];
+  mealTypes: MealType[];
   servings: number;
 }
 
@@ -77,6 +80,7 @@ export interface CookFilters {
   maxEase: number;
   apparatus: CookingApparatus[];
   flavors: FlavorProfile[];
+  mealTypes: MealType[];
   sources: RecipeSource[];
 }
 

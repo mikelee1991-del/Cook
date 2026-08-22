@@ -27,6 +27,7 @@ export const recipes: Recipe[] = [
     ease: 'easy',
     apparatus: ['oven', 'sheet-pan'],
     flavors: ['bright', 'savory', 'fresh'],
+    mealTypes: ['dinner'],
     servings: 4,
   },
   {
@@ -50,6 +51,7 @@ export const recipes: Recipe[] = [
     ease: 'easy',
     apparatus: ['oven'],
     flavors: ['light', 'fresh', 'bright'],
+    mealTypes: ['dinner', 'lunch'],
     servings: 2,
   },
   {
@@ -73,6 +75,7 @@ export const recipes: Recipe[] = [
     ease: 'easy',
     apparatus: ['stove'],
     flavors: ['fresh', 'herbaceous', 'light'],
+    mealTypes: ['dinner', 'lunch'],
     servings: 4,
   },
   {
@@ -96,6 +99,7 @@ export const recipes: Recipe[] = [
     ease: 'easy',
     apparatus: ['stove'],
     flavors: ['savory', 'bright', 'fresh'],
+    mealTypes: ['dinner', 'lunch', 'side'],
     servings: 3,
   },
   {
@@ -121,6 +125,7 @@ export const recipes: Recipe[] = [
     ease: 'easy',
     apparatus: ['stove'],
     flavors: ['savory', 'comfort', 'spicy'],
+    mealTypes: ['dinner', 'lunch'],
     servings: 4,
   },
   {
@@ -143,6 +148,7 @@ export const recipes: Recipe[] = [
     ease: 'moderate',
     apparatus: ['stove'],
     flavors: ['light', 'savory', 'fresh'],
+    mealTypes: ['dinner', 'lunch'],
     servings: 2,
   },
   {
@@ -166,6 +172,7 @@ export const recipes: Recipe[] = [
     ease: 'easy',
     apparatus: ['oven', 'sheet-pan'],
     flavors: ['savory', 'comfort', 'herbaceous'],
+    mealTypes: ['dinner', 'side'],
     servings: 4,
   },
   {
@@ -189,6 +196,7 @@ export const recipes: Recipe[] = [
     ease: 'easy',
     apparatus: ['stove'],
     flavors: ['comfort', 'savory', 'heavy'],
+    mealTypes: ['breakfast', 'lunch', 'dinner'],
     servings: 3,
   },
   {
@@ -212,6 +220,7 @@ export const recipes: Recipe[] = [
     ease: 'easy',
     apparatus: ['oven', 'no-cook'],
     flavors: ['fresh', 'bright', 'light'],
+    mealTypes: ['lunch', 'side'],
     servings: 2,
   },
   {
@@ -235,6 +244,7 @@ export const recipes: Recipe[] = [
     ease: 'moderate',
     apparatus: ['stove'],
     flavors: ['comfort', 'heavy', 'savory'],
+    mealTypes: ['dinner', 'lunch'],
     servings: 4,
   },
   {
@@ -257,6 +267,7 @@ export const recipes: Recipe[] = [
     ease: 'moderate',
     apparatus: ['grill'],
     flavors: ['savory', 'herbaceous', 'bright'],
+    mealTypes: ['dinner'],
     servings: 4,
   },
   {
@@ -278,6 +289,7 @@ export const recipes: Recipe[] = [
     ease: 'easy',
     apparatus: ['oven'],
     flavors: ['light', 'bright', 'fresh'],
+    mealTypes: ['dinner', 'lunch'],
     servings: 2,
   },
   {
@@ -301,6 +313,7 @@ export const recipes: Recipe[] = [
     ease: 'moderate',
     apparatus: ['stove'],
     flavors: ['comfort', 'savory', 'heavy'],
+    mealTypes: ['dinner', 'lunch'],
     servings: 4,
   },
   {
@@ -324,6 +337,7 @@ export const recipes: Recipe[] = [
     ease: 'easy',
     apparatus: ['stove'],
     flavors: ['fresh', 'comfort', 'light'],
+    mealTypes: ['breakfast', 'lunch', 'dinner'],
     servings: 2,
   },
   {
@@ -346,6 +360,7 @@ export const recipes: Recipe[] = [
     ease: 'easy',
     apparatus: ['stove'],
     flavors: ['comfort', 'savory', 'herbaceous'],
+    mealTypes: ['dinner', 'side'],
     servings: 3,
   },
 ];

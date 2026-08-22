@@ -8,8 +8,10 @@ import {
   AVAILABLE_APPARATUS,
   EASE_RANK,
   EASE_SLIDER_MAX,
+  MEAL_TYPE_OPTIONS,
   TIME_SLIDER_MAX,
   formatEaseFilter,
+  formatMealTypes,
   formatTimeFilter,
   recipePassesCookFilters,
 } from '../src/lib/cookFilters.ts';
@@ -25,6 +27,7 @@ function filters(patch: Partial<CookFilters> = {}): CookFilters {
     maxEase: EASE_SLIDER_MAX,
     apparatus: allIds,
     flavors: [],
+    mealTypes: MEAL_TYPE_OPTIONS.map((item) => item.value),
     sources: ['nyt', 'nyt-saved', 'original', 'other'],
     ...patch,
   };
@@ -69,6 +72,25 @@ assert.equal(formatEaseFilter(EASE_SLIDER_MAX), 'Any effort');
 console.log('→ apparatus is owned gear, not a single appliance');
 assert.equal(recipePassesCookFilters(grilled, false, filters({ apparatus: ['stove'] })), false);
 assert.equal(recipePassesCookFilters(grilled, false, filters({ apparatus: ['grill'] })), true);
+
+console.log('→ meal type chips filter breakfast, lunch, dinner, and sides');
+const spinachEggs = recipe('nyt-spinach-eggs');
+const panzanella = recipe('nyt-saved-garlic-bread-salad');
+assert.ok(spinachEggs.mealTypes.includes('breakfast'));
+assert.ok(panzanella.mealTypes.includes('side'));
+assert.equal(
+  recipePassesCookFilters(spinachEggs, false, filters({ mealTypes: ['breakfast'] })),
+  true,
+);
+assert.equal(
+  recipePassesCookFilters(panzanella, false, filters({ mealTypes: ['breakfast'] })),
+  false,
+);
+assert.equal(
+  recipePassesCookFilters(panzanella, false, filters({ mealTypes: ['side'] })),
+  true,
+);
+assert.equal(formatMealTypes(['breakfast', 'lunch']), 'Breakfast · Lunch');
 
 console.log('→ frozen stock adds cook-from-frozen or rapid-thaw, not overnight');
 

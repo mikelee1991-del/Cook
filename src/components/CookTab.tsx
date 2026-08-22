@@ -1,4 +1,4 @@
-import type { CookFilters, CookingApparatus, FlavorProfile, PantryItem, Recipe, RecipeSource } from '../types';
+import type { CookFilters, CookingApparatus, FlavorProfile, MealType, PantryItem, Recipe, RecipeSource } from '../types';
 import type { FrozenCookTiming } from '../lib/frozenHandling';
 import { recipeFlavorFitHint } from '../lib/flavorExpertise';
 import { SOURCE_OPTIONS, useCookSuggestions } from '../hooks/useCookSuggestions';
@@ -7,6 +7,8 @@ import {
   EASE_SLIDER_LABELS,
   EASE_SLIDER_MAX,
   FLAVOR_OPTIONS,
+  MEAL_TYPE_OPTIONS,
+  formatMealTypes,
   TIME_SLIDER_MAX,
   TIME_SLIDER_MIN,
   TIME_SLIDER_STEP,
@@ -51,15 +53,25 @@ export function CookTab({ pantry }: CookTabProps) {
     });
   }
 
+  function toggleMealType(mealType: MealType) {
+    setFilters((f) => {
+      const has = f.mealTypes.includes(mealType);
+      const mealTypes = has
+        ? f.mealTypes.filter((item) => item !== mealType)
+        : [...f.mealTypes, mealType];
+      return { ...f, mealTypes: mealTypes.length ? mealTypes : f.mealTypes };
+    });
+  }
+
   return (
     <div className="tab-panel cook-panel">
       <header className="panel-intro">
         <h2>What should you cook?</h2>
         <p>
           Suggestions ranked by flavor fit with your pantry — taste first, then what you
-          already have. Pick flavor chips to steer the mood. Drag time and effort; tick the
-          gear you actually own. Frozen stock adds cook-from-frozen or rapid-thaw time, not an
-          overnight defrost.
+          already have. Pick meal and flavor chips to steer the mood. Drag time and effort; tick
+          the gear you actually own. Frozen stock adds cook-from-frozen or rapid-thaw time, not
+          an overnight defrost.
         </p>
       </header>
 
@@ -133,6 +145,22 @@ export function CookTab({ pantry }: CookTabProps) {
         </fieldset>
 
         <fieldset className="source-fieldset">
+          <legend>Meal</legend>
+          <div className="source-chips">
+            {MEAL_TYPE_OPTIONS.map((o) => (
+              <label key={o.value} className="chip">
+                <input
+                  type="checkbox"
+                  checked={filters.mealTypes.includes(o.value)}
+                  onChange={() => toggleMealType(o.value)}
+                />
+                <span>{o.label}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+
+        <fieldset className="source-fieldset">
           <legend>Flavor</legend>
           <div className="source-chips">
             {FLAVOR_OPTIONS.map((o) => (
@@ -166,7 +194,7 @@ export function CookTab({ pantry }: CookTabProps) {
       </div>
 
       <p className="result-count" aria-live="polite">
-        {suggestions.length} dinner idea{suggestions.length === 1 ? '' : 's'}
+        {suggestions.length} recipe idea{suggestions.length === 1 ? '' : 's'}
       </p>
 
       <ul className="recipe-list">
@@ -183,8 +211,8 @@ export function CookTab({ pantry }: CookTabProps) {
 
       {suggestions.length === 0 && (
         <p className="empty-state">
-          Nothing matches these filters. Give the time or effort sliders more room, or tick more
-          gear.
+          Nothing matches these filters. Give the time or effort sliders more room, tick more
+          gear, or widen the meal types.
         </p>
       )}
     </div>
@@ -231,6 +259,7 @@ function RecipeSuggestion({
           {timing.extraMinutes > 0 ? ` (${recipe.minutes} + ${timing.extraMinutes} frozen)` : ''}
         </span>
         <span>{timing.ease}{timing.ease !== recipe.ease ? ' with thaw' : ''}</span>
+        <span>{formatMealTypes(recipe.mealTypes)}</span>
         <span>{recipe.apparatus.join(' · ')}</span>
         <span>{recipe.flavors.join(' · ')}</span>
         <span>{recipe.servings} servings</span>

@@ -72,6 +72,8 @@ assert.match(saves, /BulkUploadZone/, 'bulk upload wired in saves');
 const cook = read('src/components/CookTab.tsx');
 assert.match(cook, /type="range"/, 'cook filters should use sliders');
 assert.match(cook, /flavor fit|taste first/i, 'cook copy mentions flavor-first ranking');
+assert.match(cook, /MEAL_TYPE_OPTIONS|Meal<\/legend>/, 'cook has meal type chips');
+assert.match(read('src/data/recipes.ts'), /mealTypes:/, 'recipes tagged with meal types');
 assert.match(read('src/lib/flavorExpertise.ts'), /ingredientFlavorBoost/, 'flavor expertise module');
 assert.match(read('src/lib/recommendIngredients.ts'), /ingredientFlavorBoost/, 'recs use flavor boost');
 assert.match(read('src/hooks/useCookSuggestions.ts'), /recipeFlavorFit/, 'cook ranks by flavor fit');
