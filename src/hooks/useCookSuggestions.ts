@@ -12,7 +12,7 @@ import {
 } from '../lib/cookFilters';
 
 const defaultFilters: CookFilters = {
-  requireAllIngredients: false,
+  requireAllIngredients: true,
   maxMinutes: TIME_SLIDER_MAX,
   maxEase: EASE_SLIDER_MAX,
   apparatus: AVAILABLE_APPARATUS.map((item) => item.id),
