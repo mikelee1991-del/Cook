@@ -3,7 +3,7 @@
  * Run with: npx tsx scripts/test-recommend.ts
  */
 import assert from 'node:assert/strict';
-import { createBasicSpices } from '../src/data/pantrySeed.ts';
+import { createBasicSpices, groceryCatalog } from '../src/data/pantrySeed.ts';
 import { recipes } from '../src/data/recipes.ts';
 import { pantryDraftFromName } from '../src/lib/pantryDraft.ts';
 import { canBeFrozen, canToggleFrozen } from '../src/lib/frozenHandling.ts';
@@ -82,7 +82,6 @@ assert.ok(!withOil.some((r) => r.name === 'Garlic'));
 assert.ok(!withOil.some((r) => r.name === 'Lemons'));
 
 console.log('→ grocery catalog covers common add-item staples');
-import { groceryCatalog } from '../src/data/pantrySeed';
 const catalogNames = new Set(groceryCatalog.map((c) => c.name));
 for (const name of [
   'Tomatoes',
