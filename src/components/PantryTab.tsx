@@ -414,12 +414,6 @@ export function PantryTab({
         onAddToPantry={onAddRecommendedToPantry}
       />
 
-      {(mediaError || uploadError) && (
-        <aside className="expiry-banner" role="alert">
-          <p className="expiry-banner__expired">{mediaError || uploadError}</p>
-        </aside>
-      )}
-
       <section className="add-form">
         <h3>Scan shelves</h3>
         <p className="add-form__hint">
@@ -428,6 +422,11 @@ export function PantryTab({
         </p>
         {!visionReady && !usesGlobalVision() && (
           <VisionKeyField onReady={() => setVisionReady(true)} />
+        )}
+        {(mediaError || uploadError) && (
+          <aside className="expiry-banner" role="alert">
+            <p className="expiry-banner__expired">{mediaError || uploadError}</p>
+          </aside>
         )}
         <BulkUploadZone
           accept="image/*,video/*"
