@@ -81,6 +81,25 @@ assert.ok(!withOil.some((r) => r.name === 'Olive oil'));
 assert.ok(!withOil.some((r) => r.name === 'Garlic'));
 assert.ok(!withOil.some((r) => r.name === 'Lemons'));
 
+console.log('→ grocery catalog covers common add-item staples');
+import { groceryCatalog } from '../src/data/pantrySeed';
+const catalogNames = new Set(groceryCatalog.map((c) => c.name));
+for (const name of [
+  'Tomatoes',
+  'Ground beef',
+  'Bacon',
+  'Russet potatoes',
+  'All-purpose flour',
+  'Granulated sugar',
+  'White vinegar',
+  'Mozzarella',
+  'Spaghetti',
+  'Chicken broth',
+]) {
+  assert.ok(catalogNames.has(name), `missing catalog staple: ${name}`);
+}
+assert.ok(groceryCatalog.length >= 150, 'catalog should be large enough for common groceries');
+
 console.log('→ pantry draft uses catalog defaults');
 const draft = pantryDraftFromName('Lemons');
 assert.equal(draft.name, 'Lemons');

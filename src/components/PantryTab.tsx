@@ -104,7 +104,7 @@ export function PantryTab({
         seen.add(c.name.toLowerCase());
         return true;
       })
-      .slice(0, 8);
+      .slice(0, 16);
   }, [name]);
 
   const filtered = useMemo(() => {
