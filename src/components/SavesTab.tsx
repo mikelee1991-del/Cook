@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import type { PhotoScan } from '../hooks/usePhotoScans';
 import type { SortedClip } from '../lib/recipeSort';
+import { nytSavedRecipes } from '../data/nytSaves';
 import type { SavedRecipe } from '../types';
 import { compressImageBatch } from '../lib/imageCompress';
 import { isLikelyImageFile } from '../lib/imageFiles';
@@ -168,8 +169,9 @@ export function SavesTab({
       <header className="panel-intro">
         <h2>Recipe saves</h2>
         <p>
-          Upload cookbook pages, cards, screenshots, or handwritten notes. AI looks at the whole
-          page — layout, photos of the dish, and handwriting — then splits recipes automatically.
+          Your NYT Cooking saves live here, plus cookbook scans, cards, screenshots, and
+          handwritten notes. AI reads whole pages — layout, dish photos, and handwriting — then
+          splits recipes automatically.
         </p>
       </header>
 
@@ -457,6 +459,32 @@ export function SavesTab({
         </section>
       )}
 
+      <section className="nyt-saves-section">
+        <h3>Your NYT saves</h3>
+        <p className="add-form__hint">
+          {nytSavedRecipes.length} recipe{nytSavedRecipes.length === 1 ? '' : 's'} saved on NYT
+          Cooking — open the full recipe there (subscription may be required).
+        </p>
+        <ul className="saves-list">
+          {nytSavedRecipes.map((recipe) => (
+            <li key={recipe.id} className="save-card save-card--nyt">
+              <div className="save-card__top">
+                <div>
+                  <p className="recipe__source">{recipe.sourceLabel}</p>
+                  <h3 className="recipe__title">{recipe.title}</h3>
+                  <p className="recipe__desc">{recipe.description}</p>
+                </div>
+              </div>
+              {recipe.url && (
+                <a className="btn btn--primary" href={recipe.url} target="_blank" rel="noreferrer">
+                  Open on NYT Cooking
+                </a>
+              )}
+            </li>
+          ))}
+        </ul>
+      </section>
+
       <div className="saves-summary">
         <p className="result-count">
           {recipes.length} kept save{recipes.length === 1 ? '' : 's'}
@@ -538,7 +566,10 @@ export function SavesTab({
       </ul>
 
       {recipes.length === 0 && scans.length === 0 && (
-        <p className="empty-state">No saves yet — scan a page or paste a favorite link above.</p>
+        <p className="empty-state">
+          No photo or link saves yet — scan a page or paste another favorite above. Your NYT saves
+          are listed at the top.
+        </p>
       )}
 
       <input
