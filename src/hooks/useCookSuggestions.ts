@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import type { CookFilters, PantryItem, Recipe, RecipeSource } from '../types';
 import { recipes } from '../data/recipes';
 import { applyFrozenTiming } from '../lib/frozenHandling';
+import { recipeFlavorFit } from '../lib/flavorExpertise';
 import { matchRecipeToPantry } from '../lib/pantryUtils';
 import {
   AVAILABLE_APPARATUS,
@@ -27,7 +28,8 @@ export function useCookSuggestions(pantry: PantryItem[]) {
       .map((recipe) => {
         const match = matchRecipeToPantry(recipe, pantry);
         const timing = applyFrozenTiming(recipe, pantry);
-        return { recipe, match, timing };
+        const flavorFit = recipeFlavorFit(recipe, pantry, filters.flavors);
+        return { recipe, match, timing, flavorFit };
       })
       .filter(({ recipe, match, timing }) =>
         recipePassesCookFilters(recipe, match.hasAll, filters, {
@@ -36,6 +38,10 @@ export function useCookSuggestions(pantry: PantryItem[]) {
         }),
       )
       .sort((a, b) => {
+        // Flavor-first: taste fit outranks raw pantry name coverage.
+        const scoreA = a.flavorFit * 1.25 + a.match.coverage;
+        const scoreB = b.flavorFit * 1.25 + b.match.coverage;
+        if (Math.abs(scoreB - scoreA) > 0.02) return scoreB - scoreA;
         if (b.match.coverage !== a.match.coverage) return b.match.coverage - a.match.coverage;
         return a.timing.minutes - b.timing.minutes;
       });
