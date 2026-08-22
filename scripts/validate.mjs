@@ -71,6 +71,11 @@ assert.match(saves, /BulkUploadZone/, 'bulk upload wired in saves');
 
 const cook = read('src/components/CookTab.tsx');
 assert.match(cook, /type="range"/, 'cook filters should use sliders');
+assert.match(cook, /flavor fit|taste first/i, 'cook copy mentions flavor-first ranking');
+assert.match(read('src/lib/flavorExpertise.ts'), /ingredientFlavorBoost/, 'flavor expertise module');
+assert.match(read('src/lib/recommendIngredients.ts'), /ingredientFlavorBoost/, 'recs use flavor boost');
+assert.match(read('src/hooks/useCookSuggestions.ts'), /recipeFlavorFit/, 'cook ranks by flavor fit');
+assert.match(read('src/components/RecommendedIngredients.tsx'), /Chosen for flavor/, 'rec copy is flavor-led');
 assert.doesNotMatch(cook, /Instant Pot|Air fryer|air-fryer|instant-pot/, 'cook UI should not offer Instant Pot or air fryer');
 assert.match(read('src/lib/frozenHandling.ts'), /cook-from-frozen/, 'frozen cook timing');
 assert.match(read('src/lib/frozenHandling.ts'), /isDryPantryStaple/, 'dry staples skip frozen toggle');

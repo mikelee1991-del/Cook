@@ -1,5 +1,10 @@
 import { recipes } from '../data/recipes';
-import type { PantryItem } from '../types';
+import type { FlavorProfile, PantryItem } from '../types';
+import {
+  flavorReasonForIngredient,
+  ingredientFlavorBoost,
+  recipeFlavorFit,
+} from './flavorExpertise';
 import { matchRecipeToPantry, normalizeName } from './pantryUtils';
 
 export interface AutoRecommendation {
@@ -9,16 +14,20 @@ export interface AutoRecommendation {
 }
 
 /**
- * Suggest ingredients to pick up based on near-complete recipes from current stock.
- * Never invents pantry items — only missing pieces for recipes you almost have.
+ * Suggest ingredients to pick up — ranked by flavor fit with your pantry
+ * and the dishes they unlock, not by name matching alone.
  */
 export function recommendFromStock(
   pantry: PantryItem[],
   dismissedNames: string[] = [],
   limit = 24,
+  preferredFlavors: FlavorProfile[] = [],
 ): AutoRecommendation[] {
   const dismissed = new Set(dismissedNames.map(normalizeName));
-  const scores = new Map<string, { name: string; score: number; recipes: string[] }>();
+  const scores = new Map<
+    string,
+    { name: string; score: number; recipes: string[]; flavorReasons: string[] }
+  >();
 
   for (const recipe of recipes) {
     const match = matchRecipeToPantry(recipe, pantry);
@@ -26,23 +35,31 @@ export function recommendFromStock(
     if (match.have.length < 1 || match.missing.length === 0 || match.missing.length > 7) {
       continue;
     }
-    // Prefer recipes that need few extras
-    const weight = match.coverage * (8 - match.missing.length);
+
+    const flavorFit = recipeFlavorFit(recipe, pantry, preferredFlavors);
+    // Coverage still matters, but flavor fit can outweigh a mere name hit.
+    const recipeWeight = (match.coverage * 0.55 + flavorFit * 0.85) * (8 - match.missing.length);
+
     for (const missing of match.missing) {
       const key = normalizeName(missing);
-      if (!key || dismissed.has(key)) continue;
-      if (normalizeName(missing).length < 2) continue;
+      if (!key || dismissed.has(key) || key.length < 2) continue;
+
+      const boost = ingredientFlavorBoost(missing, recipe, pantry, preferredFlavors);
+      const weight = recipeWeight * boost;
+      const flavorWhy = flavorReasonForIngredient(missing, recipe);
       const existing = scores.get(key);
       if (existing) {
         existing.score += weight;
-        if (!existing.recipes.includes(recipe.title)) {
-          existing.recipes.push(recipe.title);
+        if (!existing.recipes.includes(recipe.title)) existing.recipes.push(recipe.title);
+        if (flavorWhy && !existing.flavorReasons.includes(flavorWhy)) {
+          existing.flavorReasons.push(flavorWhy);
         }
       } else {
         scores.set(key, {
           name: missing,
           score: weight,
           recipes: [recipe.title],
+          flavorReasons: flavorWhy ? [flavorWhy] : [],
         });
       }
     }
@@ -54,8 +71,9 @@ export function recommendFromStock(
     .map((row) => ({
       name: row.name,
       score: row.score,
-      reason:
-        row.recipes.length === 1
+      reason: row.flavorReasons[0]
+        ? row.flavorReasons[0]
+        : row.recipes.length === 1
           ? `Unlocks “${row.recipes[0]}”`
           : `Helps ${row.recipes.length} recipes (e.g. “${row.recipes[0]}”)`,
     }));

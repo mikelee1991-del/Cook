@@ -13,6 +13,13 @@ import {
   pantryHasIngredient,
 } from '../src/lib/pantryUtils.ts';
 import { recommendFromStock } from '../src/lib/recommendIngredients.ts';
+import {
+  flavorNotesForIngredient,
+  flavorProfilesForIngredient,
+  flavorReasonForIngredient,
+  ingredientFlavorBoost,
+  recipeFlavorFit,
+} from '../src/lib/flavorExpertise.ts';
 import type { PantryItem } from '../src/types.ts';
 
 function spicePantry(): PantryItem[] {
@@ -98,5 +105,41 @@ console.log('→ pantry rows skip freeze for staples');
 assert.equal(canToggleFrozen({ name: 'Kosher salt', section: 'dry', isStaple: true }), false);
 assert.equal(canToggleFrozen({ name: 'All-purpose flour', section: 'dry' }), false);
 assert.equal(canToggleFrozen({ name: 'Chicken thighs', section: 'refrigerated' }), true);
+
+console.log('→ flavor expertise ranks by taste, not name alone');
+assert.ok(flavorNotesForIngredient('Lemons').includes('acid'));
+assert.ok(flavorProfilesForIngredient('Lemons').includes('bright'));
+assert.ok(flavorNotesForIngredient('Parmesan').includes('umami'));
+assert.ok(flavorNotesForIngredient('Red pepper flakes').includes('heat'));
+
+const brightPantry = withItems(['Chicken thighs', 'Olive oil', 'Garlic']);
+const lemonBoost = ingredientFlavorBoost('Lemons', lemonChicken!, brightPantry, ['bright']);
+const blandBoost = ingredientFlavorBoost('Pasta penne', lemonChicken!, brightPantry, ['bright']);
+assert.ok(
+  lemonBoost > blandBoost,
+  `lemon should outrank pasta for bright lemon-garlic chicken (${lemonBoost} vs ${blandBoost})`,
+);
+
+const lemonWhy = flavorReasonForIngredient('Lemons', lemonChicken!);
+assert.ok(lemonWhy && /bright|brightness/i.test(lemonWhy), lemonWhy);
+
+const flavorRecs = recommendFromStock(brightPantry, [], 24, ['bright']);
+assert.ok(flavorRecs.length > 0);
+assert.ok(
+  flavorRecs.some((r) => /lemon/i.test(r.name) || /bright|brightness/i.test(r.reason)),
+  `expected a brightness-minded pick, got ${flavorRecs
+    .slice(0, 5)
+    .map((r) => `${r.name}: ${r.reason}`)
+    .join(' | ')}`,
+);
+
+const fitBright = recipeFlavorFit(lemonChicken!, brightPantry, ['bright']);
+const heavyDish = recipes.find((r) => r.flavors.includes('heavy'));
+assert.ok(heavyDish);
+const fitHeavyOnBrightFilter = recipeFlavorFit(heavyDish, brightPantry, ['bright']);
+assert.ok(
+  fitBright >= fitHeavyOnBrightFilter,
+  `bright filter should favor lemon-garlic over ${heavyDish.title}`,
+);
 
 console.log('test-recommend: ok');

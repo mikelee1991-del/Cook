@@ -55,9 +55,9 @@ export function CookTab({ pantry }: CookTabProps) {
       <header className="panel-intro">
         <h2>What should you cook?</h2>
         <p>
-          Suggestions ranked by what you already have. Frozen stock adds cook-from-frozen or
-          rapid-thaw time — not an overnight defrost. Drag time and effort; tick the gear you
-          actually own.
+          Suggestions ranked by flavor fit with your pantry — taste first, then what you
+          already have. Pick flavor chips to steer the mood. Frozen stock adds cook-from-frozen
+          or rapid-thaw time, not an overnight defrost.
         </p>
       </header>
 
