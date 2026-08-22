@@ -1,5 +1,5 @@
 import { recipes } from '../data/recipes';
-import type { FlavorProfile, PantryItem } from '../types';
+import type { PantryItem } from '../types';
 import {
   flavorReasonForIngredient,
   ingredientFlavorBoost,
@@ -15,13 +15,12 @@ export interface AutoRecommendation {
 
 /**
  * Suggest ingredients to pick up — ranked by flavor fit with your pantry
- * and the dishes they unlock, not by name matching alone.
+ * and the dishes they unlock. Pantry-only (no Cook flavor-chip filter).
  */
 export function recommendFromStock(
   pantry: PantryItem[],
   dismissedNames: string[] = [],
   limit = 24,
-  preferredFlavors: FlavorProfile[] = [],
 ): AutoRecommendation[] {
   const dismissed = new Set(dismissedNames.map(normalizeName));
   const scores = new Map<
@@ -36,15 +35,14 @@ export function recommendFromStock(
       continue;
     }
 
-    const flavorFit = recipeFlavorFit(recipe, pantry, preferredFlavors);
-    // Coverage still matters, but flavor fit can outweigh a mere name hit.
+    const flavorFit = recipeFlavorFit(recipe, pantry);
     const recipeWeight = (match.coverage * 0.55 + flavorFit * 0.85) * (8 - match.missing.length);
 
     for (const missing of match.missing) {
       const key = normalizeName(missing);
       if (!key || dismissed.has(key) || key.length < 2) continue;
 
-      const boost = ingredientFlavorBoost(missing, recipe, pantry, preferredFlavors);
+      const boost = ingredientFlavorBoost(missing, recipe, pantry);
       const weight = recipeWeight * boost;
       const flavorWhy = flavorReasonForIngredient(missing, recipe);
       const existing = scores.get(key);

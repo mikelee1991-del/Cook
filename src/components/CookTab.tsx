@@ -1,5 +1,6 @@
 import type { CookFilters, CookingApparatus, FlavorProfile, PantryItem, Recipe, RecipeSource } from '../types';
 import type { FrozenCookTiming } from '../lib/frozenHandling';
+import { recipeFlavorFitHint } from '../lib/flavorExpertise';
 import { SOURCE_OPTIONS, useCookSuggestions } from '../hooks/useCookSuggestions';
 import {
   AVAILABLE_APPARATUS,
@@ -56,8 +57,9 @@ export function CookTab({ pantry }: CookTabProps) {
         <h2>What should you cook?</h2>
         <p>
           Suggestions ranked by flavor fit with your pantry — taste first, then what you
-          already have. Pick flavor chips to steer the mood. Frozen stock adds cook-from-frozen
-          or rapid-thaw time, not an overnight defrost.
+          already have. Pick flavor chips to steer the mood. Drag time and effort; tick the
+          gear you actually own. Frozen stock adds cook-from-frozen or rapid-thaw time, not an
+          overnight defrost.
         </p>
       </header>
 
@@ -168,8 +170,14 @@ export function CookTab({ pantry }: CookTabProps) {
       </p>
 
       <ul className="recipe-list">
-        {suggestions.map(({ recipe, match, timing }) => (
-          <RecipeSuggestion key={recipe.id} recipe={recipe} match={match} timing={timing} />
+        {suggestions.map(({ recipe, match, timing, flavorFit }) => (
+          <RecipeSuggestion
+            key={recipe.id}
+            recipe={recipe}
+            match={match}
+            timing={timing}
+            flavorHint={recipeFlavorFitHint(recipe, flavorFit, filters.flavors)}
+          />
         ))}
       </ul>
 
@@ -187,6 +195,7 @@ function RecipeSuggestion({
   recipe,
   match,
   timing,
+  flavorHint,
 }: {
   recipe: Recipe;
   match: {
@@ -197,6 +206,7 @@ function RecipeSuggestion({
     hasAll: boolean;
   };
   timing: FrozenCookTiming;
+  flavorHint: string;
 }) {
   const pct = Math.round(match.coverage * 100);
 
@@ -207,6 +217,7 @@ function RecipeSuggestion({
           <p className="recipe__source">{recipe.sourceLabel}</p>
           <h3 className="recipe__title">{recipe.title}</h3>
           <p className="recipe__desc">{recipe.description}</p>
+          <p className="recipe__flavor-fit">{flavorHint}</p>
         </div>
         <div className="recipe__coverage" aria-label={`${pct}% of ingredients on hand`}>
           <span className="recipe__coverage-num">{pct}%</span>

@@ -734,6 +734,13 @@
   line-height: 1.45;
 }
 
+.recipe__flavor-fit {
+  margin: 0.35rem 0 0;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--moss-deep);
+}
+
 .recipe__coverage {
   flex-shrink: 0;
   text-align: center;

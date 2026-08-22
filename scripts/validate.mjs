@@ -75,7 +75,9 @@ assert.match(cook, /flavor fit|taste first/i, 'cook copy mentions flavor-first r
 assert.match(read('src/lib/flavorExpertise.ts'), /ingredientFlavorBoost/, 'flavor expertise module');
 assert.match(read('src/lib/recommendIngredients.ts'), /ingredientFlavorBoost/, 'recs use flavor boost');
 assert.match(read('src/hooks/useCookSuggestions.ts'), /recipeFlavorFit/, 'cook ranks by flavor fit');
-assert.match(read('src/components/RecommendedIngredients.tsx'), /Chosen for flavor/, 'rec copy is flavor-led');
+assert.match(read('src/components/RecommendedIngredients.tsx'), /Based on your pantry/, 'rec copy is pantry-led');
+assert.match(cook, /recipeFlavorFitHint|recipe__flavor-fit/, 'cook shows flavor-fit hint');
+assert.match(cook, /Drag time and effort/, 'cook intro explains sliders');
 assert.doesNotMatch(cook, /Instant Pot|Air fryer|air-fryer|instant-pot/, 'cook UI should not offer Instant Pot or air fryer');
 assert.match(read('src/lib/frozenHandling.ts'), /cook-from-frozen/, 'frozen cook timing');
 assert.match(read('src/lib/frozenHandling.ts'), /isDryPantryStaple/, 'dry staples skip frozen toggle');

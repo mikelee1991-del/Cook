@@ -141,23 +141,50 @@ assert.ok(
 const lemonWhy = flavorReasonForIngredient('Lemons', lemonChicken!);
 assert.ok(lemonWhy && /bright|brightness/i.test(lemonWhy), lemonWhy);
 
-const flavorRecs = recommendFromStock(brightPantry, [], 24, ['bright']);
-assert.ok(flavorRecs.length > 0);
+const fitWithFreshGarlic = recipeFlavorFit(lemonChicken!, withItems(['Garlic', 'Chicken thighs']));
+const fitWithGarlicPowderOnly = recipeFlavorFit(lemonChicken!, spicePantry());
 assert.ok(
-  flavorRecs.some((r) => /lemon/i.test(r.name) || /bright|brightness/i.test(r.reason)),
-  `expected a brightness-minded pick, got ${flavorRecs
-    .slice(0, 5)
-    .map((r) => `${r.name}: ${r.reason}`)
-    .join(' | ')}`,
+  fitWithFreshGarlic > fitWithGarlicPowderOnly,
+  'garlic powder must not count as fresh garlic for flavor fit',
+);
+
+const flavorRecs = recommendFromStock(brightPantry);
+assert.ok(flavorRecs.length > 0);
+const topPicks = flavorRecs.slice(0, 3);
+assert.ok(
+  topPicks.some((r) => /lemon/i.test(r.name) || /bright|brightness/i.test(r.reason)),
+  `expected a brightness-minded pick in top 3, got ${topPicks.map((r) => `${r.name}: ${r.reason}`).join(' | ')}`,
 );
 
 const fitBright = recipeFlavorFit(lemonChicken!, brightPantry, ['bright']);
-const heavyDish = recipes.find((r) => r.flavors.includes('heavy'));
+const heavyDish = recipes.find((r) => r.id === 'orig-broccoli-cheddar-pasta');
 assert.ok(heavyDish);
 const fitHeavyOnBrightFilter = recipeFlavorFit(heavyDish, brightPantry, ['bright']);
 assert.ok(
-  fitBright >= fitHeavyOnBrightFilter,
+  fitBright > fitHeavyOnBrightFilter,
   `bright filter should favor lemon-garlic over ${heavyDish.title}`,
+);
+
+function rankByCookRules(pantry: PantryItem[], preferredFlavors: string[] = []) {
+  return recipes
+    .map((recipe) => ({
+      recipe,
+      flavorFit: recipeFlavorFit(recipe, pantry, preferredFlavors as never),
+      coverage: matchRecipeToPantry(recipe, pantry).coverage,
+    }))
+    .sort((a, b) => {
+      if (Math.abs(b.flavorFit - a.flavorFit) > 0.001) return b.flavorFit - a.flavorFit;
+      return b.coverage - a.coverage;
+    });
+}
+
+const brightRanked = rankByCookRules(brightPantry, ['bright']);
+const lemonRank = brightRanked.findIndex((r) => r.recipe.id === 'nyt-lemon-garlic-chicken');
+const heavyRank = brightRanked.findIndex((r) => r.recipe.id === heavyDish!.id);
+assert.ok(lemonRank >= 0 && heavyRank >= 0, 'both dishes should appear in ranked list');
+assert.ok(
+  lemonRank < heavyRank,
+  `lemon-garlic chicken should rank above heavy pasta on bright filter (${lemonRank} vs ${heavyRank})`,
 );
 
 console.log('test-recommend: ok');

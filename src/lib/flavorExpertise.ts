@@ -1,5 +1,5 @@
 import type { FlavorProfile, PantryItem, Recipe } from '../types';
-import { getExpirationStatus, normalizeName } from './pantryUtils';
+import { getExpirationStatus, normalizeName, pantryHasIngredient } from './pantryUtils';
 
 /**
  * Flavor expertise for Dinner: rank recipes and grocery picks by taste
@@ -209,17 +209,23 @@ function profileOverlap(a: FlavorProfile[], b: FlavorProfile[]): number {
   return score / Math.max(a.length, b.length);
 }
 
-function namesRoughlyMatch(a: string, b: string): boolean {
-  const left = normalizeName(a);
-  const right = normalizeName(b);
-  return left === right || left.includes(right) || right.includes(left);
-}
-
 /** Pantry names that still count for cooking (not expired). */
 export function usablePantryNames(pantry: PantryItem[]): string[] {
   return pantry
     .filter((item) => getExpirationStatus(item.expiresAt) !== 'expired')
     .map((item) => item.name);
+}
+
+/** Recipe ingredients (required + optional) that match pantry stock. */
+export function recipeIngredientsOnHand(recipe: Recipe, pantry: PantryItem[]): string[] {
+  const onHand: string[] = [];
+  for (const ingredient of recipe.ingredients) {
+    if (pantryHasIngredient(pantry, ingredient)) onHand.push(ingredient);
+  }
+  for (const ingredient of recipe.optionalIngredients ?? []) {
+    if (pantryHasIngredient(pantry, ingredient)) onHand.push(ingredient);
+  }
+  return onHand;
 }
 
 /** Flavor signature of what you already have on hand. */
@@ -243,33 +249,31 @@ export function pantryFlavorSignature(pantry: PantryItem[]): {
 }
 
 /**
- * How well a recipe’s intended flavors fit the pantry’s taste + optional filter chips.
- * Soft ranking score (not a hard gate).
+ * How well a recipe’s intended flavors are covered by pantry items that
+ * actually match its ingredients. Optional filter chips steer the mood.
  */
 export function recipeFlavorFit(
   recipe: Recipe,
   pantry: PantryItem[],
   preferredFlavors: FlavorProfile[] = [],
 ): number {
-  const pantrySig = pantryFlavorSignature(pantry);
   const recipeDemand = profileDemand(recipe.flavors);
-  const stocked = usablePantryNames(pantry);
-  const haveNotes = noteVectorFromNames(
-    recipe.ingredients.filter((ing) => stocked.some((p) => namesRoughlyMatch(p, ing))),
-  );
-
-  const pantryProfileFit = profileOverlap(recipe.flavors, pantrySig.profiles);
+  const onHand = recipeIngredientsOnHand(recipe, pantry);
+  const haveNotes = noteVectorFromNames(onHand);
   const noteFit = cosineLike(haveNotes, recipeDemand);
+
   const filterFit = preferredFlavors.length
     ? profileOverlap(recipe.flavors, preferredFlavors)
-    : 0.25;
+    : 0;
 
-  return pantryProfileFit * 0.45 + noteFit * 0.35 + filterFit * 0.35;
+  const pantryTieBreak = profileOverlap(recipe.flavors, pantryFlavorSignature(pantry).profiles) * 0.05;
+
+  return noteFit * 0.72 + filterFit * 0.28 + pantryTieBreak;
 }
 
 /**
  * How much a missing ingredient advances the recipe’s flavor goals given
- * what is already in the pantry. Prefer taste completion over name overlap.
+ * what is already on hand for that dish.
  */
 export function ingredientFlavorBoost(
   ingredient: string,
@@ -289,10 +293,10 @@ export function ingredientFlavorBoost(
   const ingredientNotes = new Map<FlavorNote, number>();
   for (const note of notes) ingredientNotes.set(note, 1);
 
-  const pantryNotes = pantryFlavorSignature(pantry).notes;
+  const onHandNotes = noteVectorFromNames(recipeIngredientsOnHand(recipe, pantry));
   let gapFill = 0;
   for (const [note, want] of demand) {
-    const have = pantryNotes.get(note) ?? 0;
+    const have = onHandNotes.get(note) ?? 0;
     const brings = ingredientNotes.get(note) ?? 0;
     if (want > 0 && brings > 0 && have < want) {
       gapFill += (want - have) * brings;
@@ -305,7 +309,23 @@ export function ingredientFlavorBoost(
   return Math.min(2.5, 0.35 + gapFill * 0.55 + profileHit * 0.8 + filterHit * 0.5);
 }
 
-/** Short cook-facing reason fragment for UI copy. */
+/** Short cook-facing hint for why a recipe ranks where it does. */
+export function recipeFlavorFitHint(
+  recipe: Recipe,
+  flavorFit: number,
+  preferredFlavors: FlavorProfile[] = [],
+): string {
+  const active =
+    preferredFlavors.length > 0
+      ? recipe.flavors.filter((f) => preferredFlavors.includes(f))
+      : recipe.flavors;
+  const label = active.slice(0, 2).join(' · ') || recipe.flavors.slice(0, 2).join(' · ');
+  if (flavorFit >= 0.55) return `Strong ${label} taste match`;
+  if (flavorFit >= 0.3) return `${label} flavor fit`;
+  return `Builds toward ${label || 'this dish'}`;
+}
+
+/** Short cook-facing reason fragment for grocery row copy. */
 export function flavorReasonForIngredient(ingredient: string, recipe: Recipe): string | null {
   const notes = flavorNotesForIngredient(ingredient);
   const profiles = flavorProfilesForIngredient(ingredient);
