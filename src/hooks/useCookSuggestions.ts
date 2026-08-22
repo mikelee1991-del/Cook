@@ -38,10 +38,7 @@ export function useCookSuggestions(pantry: PantryItem[]) {
         }),
       )
       .sort((a, b) => {
-        // Flavor-first: taste fit outranks raw pantry name coverage.
-        const scoreA = a.flavorFit * 1.25 + a.match.coverage;
-        const scoreB = b.flavorFit * 1.25 + b.match.coverage;
-        if (Math.abs(scoreB - scoreA) > 0.02) return scoreB - scoreA;
+        if (Math.abs(b.flavorFit - a.flavorFit) > 0.001) return b.flavorFit - a.flavorFit;
         if (b.match.coverage !== a.match.coverage) return b.match.coverage - a.match.coverage;
         return a.timing.minutes - b.timing.minutes;
       });

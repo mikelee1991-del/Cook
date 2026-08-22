@@ -40,8 +40,8 @@ export function RecommendedIngredients({
     <section className="add-form recommended-section">
       <h3>Recommended ingredients</h3>
       <p className="add-form__hint">
-        Chosen for flavor — missing ingredients that complete the taste of dishes you can almost
-        cook. Edit any row or use “Add to pantry” when you have it in stock.
+        Based on your pantry — missing ingredients that complete the taste of dishes you can
+        almost cook. Edit any row or use “Add to pantry” when you have it in stock.
       </p>
 
       {items.length === 0 ? (
