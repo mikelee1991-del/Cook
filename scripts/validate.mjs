@@ -68,6 +68,8 @@ assert.ok(
 const saves = read('src/components/SavesTab.tsx');
 assert.match(saves, /Scan pages in bulk|Scan & sort/, 'saves scan path present');
 assert.match(saves, /BulkUploadZone/, 'bulk upload wired in saves');
+assert.match(saves, /Your NYT saves/, 'nyt saves section in saves tab');
+assert.match(read('src/data/nytSaves.ts'), /nyt-saved/, 'nyt saves data module');
 
 const cook = read('src/components/CookTab.tsx');
 assert.match(cook, /type="range"/, 'cook filters should use sliders');
