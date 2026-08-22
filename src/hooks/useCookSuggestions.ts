@@ -7,6 +7,7 @@ import { matchRecipeToPantry } from '../lib/pantryUtils';
 import {
   AVAILABLE_APPARATUS,
   EASE_SLIDER_MAX,
+  MEAL_TYPE_OPTIONS,
   TIME_SLIDER_MAX,
   recipePassesCookFilters,
 } from '../lib/cookFilters';
@@ -17,6 +18,7 @@ const defaultFilters: CookFilters = {
   maxEase: EASE_SLIDER_MAX,
   apparatus: AVAILABLE_APPARATUS.map((item) => item.id),
   flavors: [],
+  mealTypes: MEAL_TYPE_OPTIONS.map((item) => item.value),
   sources: ['nyt', 'nyt-saved', 'original', 'other'],
 };
 

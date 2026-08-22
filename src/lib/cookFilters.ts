@@ -3,6 +3,7 @@ import type {
   CookingApparatus,
   EaseLevel,
   FlavorProfile,
+  MealType,
   Recipe,
 } from '../types';
 
@@ -39,6 +40,19 @@ export const FLAVOR_OPTIONS: { value: FlavorProfile; label: string }[] = [
   { value: 'herbaceous', label: 'Herbaceous' },
 ];
 
+export const MEAL_TYPE_OPTIONS: { value: MealType; label: string }[] = [
+  { value: 'breakfast', label: 'Breakfast' },
+  { value: 'lunch', label: 'Lunch' },
+  { value: 'dinner', label: 'Dinner' },
+  { value: 'side', label: 'Side' },
+];
+
+export function formatMealTypes(mealTypes: MealType[]): string {
+  if (!mealTypes.length) return 'Meal';
+  const labels = new Map(MEAL_TYPE_OPTIONS.map((o) => [o.value, o.label]));
+  return mealTypes.map((type) => labels.get(type) ?? type).join(' · ');
+}
+
 export function formatTimeFilter(maxMinutes: number): string {
   if (maxMinutes >= TIME_SLIDER_MAX) return 'Any time';
   return `Up to ${maxMinutes} min`;
@@ -65,6 +79,12 @@ export function recipePassesCookFilters(
   if (easeRank > filters.maxEase) return false;
   if (!recipe.apparatus.some((item) => filters.apparatus.includes(item))) return false;
   if (filters.flavors.length > 0 && !recipe.flavors.some((f) => filters.flavors.includes(f))) {
+    return false;
+  }
+  if (
+    filters.mealTypes.length > 0 &&
+    !recipe.mealTypes.some((mealType) => filters.mealTypes.includes(mealType))
+  ) {
     return false;
   }
   return true;
